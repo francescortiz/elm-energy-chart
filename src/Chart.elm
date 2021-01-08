@@ -1,13 +1,14 @@
 module Chart exposing
     ( DataSet
     , ReadingType(..)
-    , addLayer
+    , addDataSet
     , empty
     , posixToFloat
     , render
     )
 
 import Html exposing (Html, text)
+import List.Extra
 import Path
 import Scale exposing (ContinuousScale)
 import Shape
@@ -29,10 +30,26 @@ type alias Series reading =
     }
 
 
-type alias IndexedSeries reading =
+type alias InternalSeries =
     { index : Int
-    , series : Series reading
+    , label : String
+    , fill : Paint
+    , line : Paint
+    , gapFill : Paint
     }
+
+
+type alias InternalDatum =
+    --
+    ( ( Float -- x
+      , Float -- width
+      )
+    , Maybe
+        ( Float -- y
+        , Float -- height
+        , Float -- extend = y + height
+        )
+    )
 
 
 type ReadingType reading
@@ -53,10 +70,10 @@ type alias DataSet reading =
     }
 
 
-type alias IndexedDataSet reading =
-    { readings : List reading
-    , seriesList : List (IndexedSeries reading)
-    , readingType : ReadingType reading
+type alias InternalDataSet =
+    { readingsList : List (List InternalDatum)
+    , seriesList : List InternalSeries
+    , readingType : ReadingType InternalDatum
     , stack : Bool
     }
 
@@ -74,9 +91,9 @@ type alias ChartConfig =
     }
 
 
-type Chart reading
+type Chart
     = Chart
-        { layers : List (IndexedDataSet reading)
+        { layers : List InternalDataSet
         }
 
 
@@ -99,11 +116,136 @@ unzip3 triplets =
     List.foldr step ( [], [], [] ) triplets
 
 
-empty : Chart reading
+empty : Chart
 empty =
     Chart
         { layers = []
         }
+
+
+addDataSet : DataSet reading -> Chart -> Chart
+addDataSet dataSet (Chart { layers }) =
+    Chart
+        { layers =
+            List.append layers
+                [ dataSetMapper dataSet
+                ]
+        }
+
+
+dataSetMapper : DataSet reading -> InternalDataSet
+dataSetMapper dataSet =
+    let
+        { readingType, readings, seriesList, stack } =
+            dataSet
+
+        newReadings : List (List InternalDatum)
+        newReadings =
+            case readingType of
+                Accumulated { startAccessor, endAccessor } ->
+                    let
+                        readingsMapped : List (List InternalDatum)
+                        readingsMapped =
+                            readings
+                                |> List.map
+                                    (\reading ->
+                                        seriesList
+                                            |> List.foldl
+                                                (\series ( allValues, minY, maxY ) ->
+                                                    let
+                                                        value =
+                                                            series.accessor reading
+                                                                |> Maybe.withDefault 0
+
+                                                        ( y0, y1 ) =
+                                                            if value > 0 then
+                                                                ( maxY, value + maxY )
+
+                                                            else
+                                                                ( value + minY, minY )
+                                                    in
+                                                    ( ( ( startAccessor reading, endAccessor reading )
+                                                      , Just ( y0, y1, y0 + y1 )
+                                                      )
+                                                        :: allValues
+                                                    , min minY y0
+                                                    , max maxY y1
+                                                    )
+                                                )
+                                                ( [], 0, 0 )
+                                    )
+                                |> unzip3
+                                |> Tuple3.first
+                    in
+                    readingsMapped
+                        |> List.Extra.transpose
+
+                Point { xAccessor } ->
+                    let
+                        readingsMapped : List (List InternalDatum)
+                        readingsMapped =
+                            readings
+                                |> List.map
+                                    (\reading ->
+                                        seriesList
+                                            |> List.foldl
+                                                (\series ( allValues, minY, maxY ) ->
+                                                    let
+                                                        value =
+                                                            series.accessor reading
+                                                                |> Maybe.withDefault 0
+
+                                                        ( y0, y1 ) =
+                                                            if value > 0 then
+                                                                ( maxY, value + maxY )
+
+                                                            else
+                                                                ( value + minY, minY )
+                                                    in
+                                                    ( ( ( xAccessor reading
+                                                        , 0
+                                                        )
+                                                      , Just ( y0, y1, y0 + y1 )
+                                                      )
+                                                        :: allValues
+                                                    , min minY y0
+                                                    , max maxY y1
+                                                    )
+                                                )
+                                                ( [], 0, 0 )
+                                    )
+                                |> unzip3
+                                |> Tuple3.first
+                    in
+                    readingsMapped
+                        |> List.Extra.transpose
+    in
+    { readingsList = newReadings
+    , seriesList =
+        seriesList
+            |> List.indexedMap seriesToInteral
+    , readingType =
+        case readingType of
+            Accumulated _ ->
+                Accumulated
+                    { startAccessor = Tuple.first >> Tuple.first
+                    , endAccessor = Tuple.first >> Tuple.second
+                    }
+
+            Point _ ->
+                Point { xAccessor = Tuple.first >> Tuple.first }
+    , stack = stack
+    }
+
+
+seriesToInteral : Int -> Series reading -> InternalSeries
+seriesToInteral index series =
+    { index = index
+    , label = series.label
+    , fill = series.fill
+    , line = series.line
+    , gapFill = series.gapFill
+    }
 
 
 render :
@@ -111,7 +253,7 @@ render :
     , startTime : Posix
     , endTime : Posix
     }
-    -> Chart reading
+    -> Chart
     -> Html msg
 render options (Chart { layers }) =
     let
@@ -121,20 +263,20 @@ render options (Chart { layers }) =
         ( minY, maxY ) =
             layers
                 |> List.foldl
-                    (\{ seriesList, readings } ( dataSetMinY, dataSetMaxY ) ->
-                        seriesList
+                    (\{ readingsList, seriesList, readingType, stack } ( dataSetMinY, dataSetMaxY ) ->
+                        readingsList
                             |> List.foldl
-                                (\indexedSeries ( accMinY, accMaxY ) ->
+                                (\readings ( accMinY, accMaxY ) ->
                                     let
-                                        seriesAccessor =
-                                            indexedSeries.series.accessor
+                                        extendAccessor =
+                                            Tuple.second >> Maybe.map Tuple3.third
                                     in
                                     readings
                                         |> List.foldl
                                             (\reading ( seriesMinY, seriesMaxY ) ->
                                                 let
                                                     v =
-                                                        seriesAccessor reading
+                                                        extendAccessor reading
                                                             |> Maybe.withDefault 0
                                                 in
                                                 ( min seriesMinY v, max seriesMaxY v )
@@ -184,40 +326,22 @@ render options (Chart { layers }) =
                 ]
             ]
             (layers
-                |> List.map (renderDataSet chartConfig)
+                |> List.concatMap
+                    (\{ readingsList, seriesList, readingType, stack } ->
+                        List.map2 (renderDataSet chartConfig readingType stack) seriesList readingsList
+                    )
             )
         ]
 
 
-addLayer : DataSet reading -> Chart reading -> Chart reading
-addLayer dataSet (Chart { layers }) =
-    Chart
-        { layers =
-            List.append layers
-                [ { readings = dataSet.readings
-                  , seriesList =
-                        dataSet.seriesList
-                            |> List.indexedMap
-                                (\i series ->
-                                    { series = series
-                                    , index = i
-                                    }
-                                )
-                  , readingType = dataSet.readingType
-                  , stack = dataSet.stack
-                  }
-                ]
-        }
-
-
-renderDataSet : ChartConfig -> IndexedDataSet reading -> Svg msg
-renderDataSet chartConfig { readings, seriesList, readingType, stack } =
+renderDataSet : ChartConfig -> ReadingType InternalDatum -> Bool -> InternalSeries -> List InternalDatum -> Svg msg
+renderDataSet chartConfig readingType stack internalSeries readings =
     let
         { xScaleConvert, yScaleConvert } =
             chartConfig
 
-        dataSetRenderer : IndexedSeries reading -> List (Svg msg)
-        dataSetRenderer indexedSeries =
+        dataSetRenderer : List (Svg msg)
+        dataSetRenderer =
             case readingType of
                 Accumulated { startAccessor, endAccessor } ->
                     let
@@ -232,13 +356,22 @@ renderDataSet chartConfig { readings, seriesList, readingType, stack } =
                                 |> List.map
                                     (\reading ->
                                         ( ( startAccessorScale reading, endAccessorScale reading )
-                                        , indexedSeries.series.accessor reading
-                                            |> Maybe.map (\y_ -> ( yScaleConvert 0, yScaleConvert y_ ))
+                                        , reading
+                                            |> Tuple.second
+                                            >> Maybe.map (Tuple3.second >> yScaleConvert)
+                                            |> Maybe.map
+                                                (\y_ ->
+                                                    let
+                                                        y =
+                                                            yScaleConvert y_
+                                                    in
+                                                    ( yScaleConvert 0, y, y )
+                                                )
                                         )
                                     )
                     in
                     readingsMapped
-                        |> List.map (renderAccumulatedSeries chartConfig indexedSeries)
+                        |> List.map (renderAccumulatedSeries chartConfig internalSeries)
 
                 Point { xAccessor } ->
                     let
@@ -249,148 +382,43 @@ renderDataSet chartConfig { readings, seriesList, readingType, stack } =
                             readings
                                 |> List.map
                                     (\reading ->
-                                        ( xAccessorScale reading
-                                        , indexedSeries.series.accessor reading
-                                            |> Maybe.map (\y_ -> ( yScaleConvert 0, yScaleConvert y_ ))
+                                        let
+                                            x =
+                                                xAccessorScale reading
+                                        in
+                                        ( ( x, x )
+                                        , reading
+                                            |> Tuple.second
+                                            >> Maybe.map (Tuple3.second >> yScaleConvert)
+                                            |> Maybe.map
+                                                (\y_ ->
+                                                    let
+                                                        y =
+                                                            yScaleConvert y_
+                                                    in
+                                                    ( yScaleConvert 0, y, y )
+                                                )
                                         )
                                     )
                     in
                     readingsMapped
-                        |> renderPointSeries chartConfig indexedSeries
+                        |> renderPointSeries chartConfig internalSeries
 
         stackedDataSetRenderer : List (Svg msg)
         stackedDataSetRenderer =
             case readingType of
                 Accumulated { startAccessor, endAccessor } ->
-                    let
-                        startAccessorScale =
-                            startAccessor >> xScaleConvert
-
-                        endAccessorScale =
-                            endAccessor >> xScaleConvert
-
-                        ( readingsMapped, newMinY, newMaxY ) =
-                            readings
-                                |> List.map
-                                    (\reading ->
-                                        seriesList
-                                            |> List.foldl
-                                                (\indexedSeries ( allValues, minY, maxY ) ->
-                                                    let
-                                                        value =
-                                                            indexedSeries.series.accessor reading
-                                                                |> Maybe.withDefault 0
-                                                                |> yScaleConvert
-                                                                |> Debug.log "value"
-
-                                                        ( y0, y1 ) =
-                                                            (if value > 0 then
-                                                                ( maxY, value + maxY )
-
-                                                             else
-                                                                ( value + minY, minY )
-                                                            )
-                                                                |> Debug.log "( y0, y1 )"
-
-                                                        _ =
-                                                            ( min minY y0
-                                                            , max maxY y1
-                                                            )
-                                                                |> Debug.log "( newMinY, newMaxY )"
-                                                    in
-                                                    ( ( indexedSeries
-                                                      , ( ( startAccessorScale reading, endAccessorScale reading )
-                                                        , Just ( y0, y1 )
-                                                        )
-                                                      )
-                                                        :: allValues
-                                                    , min minY y0
-                                                    , max maxY y1
-                                                    )
-                                                        |> Debug.log "asdf"
-                                                )
-                                                ( [], 0, 0 )
-                                    )
-                                |> unzip3
-                                |> Tuple3.mapFirst List.concat
-                                |> Tuple3.mapSecond List.minimum
-                                |> Tuple3.mapThird List.maximum
-                                |> Debug.log "FINAL ( readingsMapped, newMinY, newMaxY )"
-                    in
-                    readingsMapped
+                    readings
                         |> List.map
-                            (\( indexedSeries, reading ) ->
-                                renderAccumulatedSeries chartConfig indexedSeries reading
+                            (\reading ->
+                                renderAccumulatedSeries chartConfig internalSeries reading
                             )
 
                 Point { xAccessor } ->
-                    let
-                        xAccessorScale =
-                            xAccessor >> xScaleConvert
-
-                        ( readingsMapped, newMinY, newMaxY ) =
-                            readings
-                                |> List.map
-                                    (\reading ->
-                                        seriesList
-                                            |> List.foldl
-                                                (\indexedSeries ( allValues, minY, maxY ) ->
-                                                    let
-                                                        _ =
-                                                            ( minY, maxY )
-
-                                                        value =
-                                                            indexedSeries.series.accessor reading
-                                                                |> Maybe.withDefault 0
-                                                                |> yScaleConvert
-
-                                                        ( y0, y1 ) =
-                                                            if value > 0 then
-                                                                ( maxY, value + maxY )
-
-                                                            else
-                                                                ( value + minY, minY )
-                                                    in
-                                                    ( ( indexedSeries
-                                                      , ( xAccessorScale reading
-                                                        , Just ( y0, y1 )
-                                                            |> Debug.log (String.fromInt indexedSeries.index ++ "( y0, y1 )")
-                                                        )
-                                                      )
-                                                        :: allValues
-                                                    , min minY y0
-                                                    , max maxY y1
-                                                    )
-                                                )
-                                                ( [], 0, 0 )
-                                    )
-                                |> unzip3
-                                |> Tuple3.mapFirst List.concat
-                                |> Tuple3.mapSecond List.minimum
-                                |> Tuple3.mapThird List.maximum
-                                |> Debug.log "FINAL ( readingsMapped, newMinY, newMaxY )"
-                    in
-                    seriesList
-                        |> List.concatMap
-                            (\indexedSeries ->
-                                let
-                                    readingsFiltered =
-                                        readingsMapped
-                                            |> List.filterMap
-                                                (\( s, p ) ->
-                                                    if s.index == indexedSeries.index then
-                                                        Just p
-
-                                                    else
-                                                        Nothing
-                                                )
-                                in
-                                renderPointSeries chartConfig indexedSeries readingsFiltered
-                            )
+                    renderPointSeries chartConfig internalSeries readings
     in
     if not stack then
-        seriesList
-            |> List.concatMap dataSetRenderer
+        dataSetRenderer
             |> g [ class [ "dataset" ] ]
 
     else
@@ -400,19 +428,16 @@ renderDataSet chartConfig { readings, seriesList, readingType, stack } =
 
 renderAccumulatedSeries :
     ChartConfig
-    -> IndexedSeries reading
-    -> ( ( Float, Float ), Maybe ( Float, Float ) )
+    -> InternalSeries
+    -> InternalDatum
     -> Svg msg
-renderAccumulatedSeries chartConfig indexedSeries ( ( x0, x1 ), readingValue ) =
+renderAccumulatedSeries chartConfig internalSeries ( ( x0, x1 ), readingValue ) =
     let
-        series =
-            indexedSeries.series
-
         { zeroY } =
             chartConfig
     in
     case Debug.log "readingValue" readingValue of
-        Just ( y0, y1 ) ->
+        Just ( y0, y1, _ ) ->
             let
                 ( y_, h ) =
                     (if y1 < y0 then
@@ -424,9 +449,9 @@ renderAccumulatedSeries chartConfig indexedSeries ( ( x0, x1 ), readingValue ) =
                         |> Debug.log "( y_, h )"
             in
             rect
-                [ class [ "series-" ++ series.label ]
-                , fill <| series.fill
-                , stroke <| series.fill
+                [ class [ "series-" ++ internalSeries.label ]
+                , fill <| internalSeries.fill
+                , stroke <| internalSeries.fill
                 , strokeWidth 0.35
                 , x x0
                 , y y_
@@ -441,9 +466,9 @@ renderAccumulatedSeries chartConfig indexedSeries ( ( x0, x1 ), readingValue ) =
                     chartConfig
             in
             rect
-                [ class [ "series-" ++ series.label ]
-                , fill series.gapFill
-                , stroke series.gapFill
+                [ class [ "series-" ++ internalSeries.label ]
+                , fill internalSeries.gapFill
+                , stroke internalSeries.gapFill
                 , strokeWidth 0.35
                 , x x0
                 , y minY
@@ -455,10 +480,10 @@ renderAccumulatedSeries chartConfig indexedSeries ( ( x0, x1 ), readingValue ) =
 
 renderPointSeries :
     ChartConfig
-    -> IndexedSeries reading
-    -> List ( Float, Maybe ( Float, Float ) )
+    -> InternalSeries
+    -> List InternalDatum
     -> List (Svg msg)
-renderPointSeries chartConfig indexedSeries readings =
+renderPointSeries chartConfig internalSeries readings =
     let
         { zeroY } =
             chartConfig
@@ -468,11 +493,11 @@ renderPointSeries chartConfig indexedSeries readings =
     in
     [ readings
         |> List.map
-            (\( x, v ) ->
+            (\( ( x, _ ), v ) ->
                 v
-                    |> Debug.log ("v" ++ String.fromInt indexedSeries.index)
+                    |> Debug.log ("v" ++ String.fromInt internalSeries.index)
                     |> Maybe.map
-                        (\( _, y1 ) ->
+                        (\( _, y1, _ ) ->
                             ( x
                             , y1
                             )
@@ -481,17 +506,17 @@ renderPointSeries chartConfig indexedSeries readings =
         |> Shape.line shape
         |> (\path ->
                 Path.element path
-                    [ stroke indexedSeries.series.line
+                    [ stroke internalSeries.line
                     , strokeWidth 2
                     , fill PaintNone
                     ]
            )
     , readings
         |> List.map
-            (\( x, v ) ->
+            (\( ( x, _ ), v ) ->
                 v
                     |> Maybe.map
-                        (\( y0, y1 ) ->
+                        (\( y0, y1, _ ) ->
                             if y0 > y1 then
                                 ( ( x, y0 )
                                 , ( x, y1 )
@@ -507,7 +532,7 @@ renderPointSeries chartConfig indexedSeries readings =
         |> (\path ->
                 Path.element path
                     [ strokeWidth 2
-                    , fill indexedSeries.series.fill
+                    , fill internalSeries.fill
                     ]
            )
     ]

@@ -28,7 +28,7 @@ init flags =
 makeChart : Bool -> Html Msg
 makeChart stack =
     Chart.empty
-        |> Chart.addLayer
+        |> Chart.addDataSet
             { readings =
                 [ { start = 0
                   , end = 1000000
@@ -67,7 +67,7 @@ makeChart stack =
                     }
             , stack = stack
             }
-        |> Chart.addLayer
+        |> Chart.addDataSet
             { readings =
                 [ { start = 0
                   , end = 1000000
@@ -106,7 +106,7 @@ makeChart stack =
                     }
             , stack = stack
             }
-        |> Chart.addLayer
+        |> Chart.addDataSet
             { readings =
                 [ { start = 500
                   , end = 500

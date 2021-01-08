@@ -281,7 +281,10 @@ render options (Chart { layers }) =
         ( width, height ) =
             options.size
 
-        padding =
+        verticalPadding =
+            lineWidth
+
+        horizontalPadding =
             lineWidth
 
         -- for the stroke
@@ -321,10 +324,10 @@ render options (Chart { layers }) =
             posixToFloat options.endTime
 
         xScale =
-            Scale.linear ( 0, width ) ( minX, maxX )
+            Scale.linear ( 0, width - horizontalPadding ) ( minX, maxX )
 
         yScale =
-            Scale.linear ( 0, height - padding ) ( minY, maxY )
+            Scale.linear ( 0, height - verticalPadding ) ( minY, maxY )
 
         zeroY =
             Scale.convert yScale 0
@@ -347,7 +350,7 @@ render options (Chart { layers }) =
         [ g
             [ class [ "series" ]
             , transform
-                [ Translate 0 (height - padding / 2)
+                [ Translate (0 + horizontalPadding / 2) (height - verticalPadding / 2)
                 , TypeSvgAttribute.Scale 1 -1
                 ]
             ]

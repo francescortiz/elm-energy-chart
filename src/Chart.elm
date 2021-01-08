@@ -21,6 +21,19 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types as TypeSvgAttribute exposing (Paint(..), Transform(..))
 
 
+
+-- CONSTANTS
+
+
+lineWidth : Float
+lineWidth =
+    2
+
+
+
+-- TYPES
+
+
 type alias Series reading =
     { label : String
     , accessor : reading -> Maybe Float
@@ -163,13 +176,10 @@ dataSetMapper dataSet =
                                                                     ( maxY, value + maxY, value + maxY )
 
                                                                 else
-                                                                    ( value + minY, minY, value + minY )
-
-                                                            else if value > 0 then
-                                                                ( 0, value, value )
+                                                                    ( minY, value + minY, value + minY )
 
                                                             else
-                                                                ( value, 0, value )
+                                                                ( 0, value, value )
                                                     in
                                                     ( ( ( startAccessor reading, endAccessor reading )
                                                       , Just ( y0, y1, extend )
@@ -208,13 +218,10 @@ dataSetMapper dataSet =
                                                                     ( maxY, value + maxY, value + maxY )
 
                                                                 else
-                                                                    ( value + minY, minY, value + minY )
-
-                                                            else if value > 0 then
-                                                                ( 0, value, value )
+                                                                    ( minY, value + minY, value + minY )
 
                                                             else
-                                                                ( value, 0, value )
+                                                                ( 0, value, value )
                                                     in
                                                     ( ( ( xAccessor reading
                                                         , 0
@@ -274,6 +281,10 @@ render options (Chart { layers }) =
         ( width, height ) =
             options.size
 
+        padding =
+            lineWidth
+
+        -- for the stroke
         ( minY, maxY ) =
             layers
                 |> List.foldl
@@ -313,7 +324,7 @@ render options (Chart { layers }) =
             Scale.linear ( 0, width ) ( minX, maxX )
 
         yScale =
-            Scale.linear ( 0, height ) ( minY, maxY )
+            Scale.linear ( 0, height - padding ) ( minY, maxY )
 
         zeroY =
             Scale.convert yScale 0
@@ -336,7 +347,7 @@ render options (Chart { layers }) =
         [ g
             [ class [ "series" ]
             , transform
-                [ Translate 0 height
+                [ Translate 0 (height - padding / 2)
                 , TypeSvgAttribute.Scale 1 -1
                 ]
             ]
@@ -482,26 +493,6 @@ renderPointSeries chartConfig internalSeries readings =
         |> List.map
             (\( ( x, _ ), v ) ->
                 v
-                    |> Debug.log ("v" ++ String.fromInt internalSeries.index)
-                    |> Maybe.map
-                        (\( _, y1, _ ) ->
-                            ( x
-                            , y1
-                            )
-                        )
-            )
-        |> Shape.line shape
-        |> (\path ->
-                Path.element path
-                    [ stroke internalSeries.line
-                    , strokeWidth 2
-                    , fill PaintNone
-                    ]
-           )
-    , readings
-        |> List.map
-            (\( ( x, _ ), v ) ->
-                v
                     |> Maybe.map
                         (\( y0, y1, _ ) ->
                             if y0 > y1 then
@@ -518,8 +509,28 @@ renderPointSeries chartConfig internalSeries readings =
         |> Shape.area shape
         |> (\path ->
                 Path.element path
-                    [ strokeWidth 2
+                    [ strokeWidth lineWidth
                     , fill internalSeries.fill
+                    ]
+           )
+    , readings
+        |> List.map
+            (\( ( x, _ ), v ) ->
+                v
+                    |> Debug.log ("v" ++ String.fromInt internalSeries.index)
+                    |> Maybe.map
+                        (\( _, y1, _ ) ->
+                            ( x
+                            , y1
+                            )
+                        )
+            )
+        |> Shape.line shape
+        |> (\path ->
+                Path.element path
+                    [ stroke internalSeries.line
+                    , strokeWidth lineWidth
+                    , fill PaintNone
                     ]
            )
     ]

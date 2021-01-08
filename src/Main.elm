@@ -4,6 +4,7 @@ import Browser
 import Chart
 import Color
 import Html exposing (Html, div, text)
+import Html.Attributes exposing (style)
 import Time exposing (millisToPosix)
 import TypedSvg.Types exposing (Paint(..))
 
@@ -116,12 +117,12 @@ makeChart stack =
                 , { start = 800000
                   , end = 800000
                   , a = 4
-                  , b = 100
+                  , b = 5000
                   }
                 , { start = 1200000
                   , end = 1200000
                   , a = 234
-                  , b = 1
+                  , b = 100
                   }
                 , { start = 1500000
                   , end = 1500000
@@ -163,7 +164,7 @@ makeChart stack =
 
 view : Model -> Html Msg
 view model =
-    div []
+    div [ style "width" "1000px", style "margin" "auto" ]
         [ makeChart False
         , makeChart True
         ]

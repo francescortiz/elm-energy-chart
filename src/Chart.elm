@@ -363,7 +363,7 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                                                 (\y_ ->
                                                     let
                                                         y =
-                                                            yScaleConvert y_
+                                                            y_
                                                     in
                                                     ( yScaleConvert 0, y, y )
                                                 )
@@ -394,7 +394,7 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                                                 (\y_ ->
                                                     let
                                                         y =
-                                                            yScaleConvert y_
+                                                            y_
                                                     in
                                                     ( yScaleConvert 0, y, y )
                                                 )

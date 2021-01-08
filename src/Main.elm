@@ -38,7 +38,7 @@ makeChart stack =
                 , { start = 1000000
                   , end = 1100000
                   , a = 44
-                  , b = 44
+                  , b = 22
                   }
                 , { start = 1100000
                   , end = 2000000
@@ -47,15 +47,15 @@ makeChart stack =
                   }
                 ]
             , seriesList =
-                [ { label = "Series A"
-                  , accessor = .a >> Just
-                  , fill = Paint Color.green
+                [ { label = "Series B"
+                  , accessor = .b >> Just
+                  , fill = Paint Color.blue
                   , line = Paint Color.black
                   , gapFill = Paint Color.gray
                   }
-                , { label = "Series B"
-                  , accessor = .b >> Just
-                  , fill = Paint Color.blue
+                , { label = "Series A"
+                  , accessor = .a >> Just
+                  , fill = Paint Color.green
                   , line = Paint Color.black
                   , gapFill = Paint Color.gray
                   }
@@ -86,15 +86,15 @@ makeChart stack =
         --          }
         --        ]
         --    , seriesList =
-        --        [ { label = "Series A"
-        --          , accessor = .a >> Just
-        --          , fill = Paint Color.red
+        --        [ { label = "Series B"
+        --          , accessor = .b >> Just
+        --          , fill = Paint Color.orange
         --          , line = Paint Color.black
         --          , gapFill = Paint Color.gray
         --          }
-        --        , { label = "Series B"
-        --          , accessor = .b >> Just
-        --          , fill = Paint Color.orange
+        --        , { label = "Series A"
+        --          , accessor = .a >> Just
+        --          , fill = Paint Color.red
         --          , line = Paint Color.black
         --          , gapFill = Paint Color.gray
         --          }
@@ -106,54 +106,54 @@ makeChart stack =
         --            }
         --    , stack = stack
         --    }
-        --|> Chart.addDataSet
-        --    { readings =
-        --        [ { start = 500
-        --          , end = 500
-        --          , a = 123
-        --          , b = 100
-        --          }
-        --        , { start = 800000
-        --          , end = 800000
-        --          , a = 4
-        --          , b = 100
-        --          }
-        --        , { start = 1200000
-        --          , end = 1200000
-        --          , a = 234
-        --          , b = 1
-        --          }
-        --        , { start = 1500000
-        --          , end = 1500000
-        --          , a = 534
-        --          , b = 100
-        --          }
-        --        , { start = 2000000
-        --          , end = 2000000
-        --          , a = 734
-        --          , b = 900
-        --          }
-        --        ]
-        --    , seriesList =
-        --        [ { label = "Series A"
-        --          , accessor = .a >> Just
-        --          , fill = Paint <| Color.rgba 1 0 1 0.5
-        --          , line = Paint Color.black
-        --          , gapFill = Paint Color.gray
-        --          }
-        --        , { label = "Series B"
-        --          , accessor = .b >> Just
-        --          , fill = Paint <| Color.rgba 1 1 0 0.5
-        --          , line = Paint Color.black
-        --          , gapFill = Paint Color.gray
-        --          }
-        --        ]
-        --    , readingType =
-        --        Chart.Point
-        --            { xAccessor = .end
-        --            }
-        --    , stack = stack
-        --    }
+        |> Chart.addDataSet
+            { readings =
+                [ { start = 500
+                  , end = 500
+                  , a = 123
+                  , b = 100
+                  }
+                , { start = 800000
+                  , end = 800000
+                  , a = 4
+                  , b = 100
+                  }
+                , { start = 1200000
+                  , end = 1200000
+                  , a = 234
+                  , b = 1
+                  }
+                , { start = 1500000
+                  , end = 1500000
+                  , a = 534
+                  , b = 100
+                  }
+                , { start = 2000000
+                  , end = 2000000
+                  , a = 734
+                  , b = 900
+                  }
+                ]
+            , seriesList =
+                [ { label = "Series A"
+                  , accessor = .a >> Just
+                  , fill = Paint <| Color.rgba 1 0 1 0.5
+                  , line = Paint Color.black
+                  , gapFill = Paint Color.gray
+                  }
+                , { label = "Series B"
+                  , accessor = .b >> Just
+                  , fill = Paint <| Color.rgba 1 1 0 0.5
+                  , line = Paint Color.black
+                  , gapFill = Paint Color.gray
+                  }
+                ]
+            , readingType =
+                Chart.Point
+                    { xAccessor = .end
+                    }
+            , stack = stack
+            }
         |> Chart.render
             { size = ( 1000, 400 )
             , startTime = millisToPosix 0

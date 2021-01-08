@@ -158,14 +158,21 @@ dataSetMapper dataSet =
                                                                 |> Maybe.withDefault 0
 
                                                         ( y0, y1 ) =
-                                                            if value > 0 then
-                                                                ( maxY, value + maxY )
+                                                            if stack then
+                                                                if value > 0 then
+                                                                    ( maxY, value + maxY )
+
+                                                                else
+                                                                    ( value + minY, minY )
+
+                                                            else if value > 0 then
+                                                                ( 0, value )
 
                                                             else
-                                                                ( value + minY, minY )
+                                                                ( value, 0 )
                                                     in
                                                     ( ( ( startAccessor reading, endAccessor reading )
-                                                      , Just ( y0, y1, y0 + y1 )
+                                                      , Just ( y0, y1, y1 )
                                                       )
                                                         :: allValues
                                                     , min minY y0
@@ -196,16 +203,23 @@ dataSetMapper dataSet =
                                                                 |> Maybe.withDefault 0
 
                                                         ( y0, y1 ) =
-                                                            if value > 0 then
-                                                                ( maxY, value + maxY )
+                                                            if stack then
+                                                                if value > 0 then
+                                                                    ( maxY, value + maxY )
+
+                                                                else
+                                                                    ( value + minY, minY )
+
+                                                            else if value > 0 then
+                                                                ( 0, value )
 
                                                             else
-                                                                ( value + minY, minY )
+                                                                ( value, 0 )
                                                     in
                                                     ( ( ( xAccessor reading
                                                         , 0
                                                         )
-                                                      , Just ( y0, y1, y0 + y1 )
+                                                      , Just ( y0, y1, y1 )
                                                       )
                                                         :: allValues
                                                     , min minY y0
@@ -263,7 +277,7 @@ render options (Chart { layers }) =
         ( minY, maxY ) =
             layers
                 |> List.foldl
-                    (\{ readingsList, seriesList, readingType, stack } ( dataSetMinY, dataSetMaxY ) ->
+                    (\{ readingsList } ( dataSetMinY, dataSetMaxY ) ->
                         readingsList
                             |> List.foldl
                                 (\readings ( accMinY, accMaxY ) ->
@@ -403,27 +417,9 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                     in
                     readingsMapped
                         |> renderPointSeries chartConfig internalSeries
-
-        stackedDataSetRenderer : List (Svg msg)
-        stackedDataSetRenderer =
-            case readingType of
-                Accumulated { startAccessor, endAccessor } ->
-                    readings
-                        |> List.map
-                            (\reading ->
-                                renderAccumulatedSeries chartConfig internalSeries reading
-                            )
-
-                Point { xAccessor } ->
-                    renderPointSeries chartConfig internalSeries readings
     in
-    if not stack then
-        dataSetRenderer
-            |> g [ class [ "dataset" ] ]
-
-    else
-        stackedDataSetRenderer
-            |> g [ class [ "dataset" ] ]
+    dataSetRenderer
+        |> g [ class [ "dataset" ] ]
 
 
 renderAccumulatedSeries :

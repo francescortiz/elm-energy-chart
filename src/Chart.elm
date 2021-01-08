@@ -157,22 +157,22 @@ dataSetMapper dataSet =
                                                             series.accessor reading
                                                                 |> Maybe.withDefault 0
 
-                                                        ( y0, y1 ) =
+                                                        ( y0, y1, extend ) =
                                                             if stack then
                                                                 if value > 0 then
-                                                                    ( maxY, value + maxY )
+                                                                    ( maxY, value + maxY, value + maxY )
 
                                                                 else
-                                                                    ( value + minY, minY )
+                                                                    ( value + minY, minY, value + minY )
 
                                                             else if value > 0 then
-                                                                ( 0, value )
+                                                                ( 0, value, value )
 
                                                             else
-                                                                ( value, 0 )
+                                                                ( value, 0, value )
                                                     in
                                                     ( ( ( startAccessor reading, endAccessor reading )
-                                                      , Just ( y0, y1, y1 )
+                                                      , Just ( y0, y1, extend )
                                                       )
                                                         :: allValues
                                                     , min minY y0
@@ -202,24 +202,24 @@ dataSetMapper dataSet =
                                                             series.accessor reading
                                                                 |> Maybe.withDefault 0
 
-                                                        ( y0, y1 ) =
+                                                        ( y0, y1, extend ) =
                                                             if stack then
                                                                 if value > 0 then
-                                                                    ( maxY, value + maxY )
+                                                                    ( maxY, value + maxY, value + maxY )
 
                                                                 else
-                                                                    ( value + minY, minY )
+                                                                    ( value + minY, minY, value + minY )
 
                                                             else if value > 0 then
-                                                                ( 0, value )
+                                                                ( 0, value, value )
 
                                                             else
-                                                                ( value, 0 )
+                                                                ( value, 0, value )
                                                     in
                                                     ( ( ( xAccessor reading
                                                         , 0
                                                         )
-                                                      , Just ( y0, y1, y1 )
+                                                      , Just ( y0, y1, extend )
                                                       )
                                                         :: allValues
                                                     , min minY y0
@@ -296,6 +296,7 @@ render options (Chart { layers }) =
                                                 ( min seriesMinY v, max seriesMaxY v )
                                             )
                                             ( accMinY, accMaxY )
+                                        |> Debug.log "( accMinY, accMaxY )"
                                 )
                                 ( dataSetMinY, dataSetMaxY )
                             |> Debug.log "( minY, maxY )"
@@ -372,14 +373,9 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                                         ( ( startAccessorScale reading, endAccessorScale reading )
                                         , reading
                                             |> Tuple.second
-                                            >> Maybe.map (Tuple3.second >> yScaleConvert)
                                             |> Maybe.map
-                                                (\y_ ->
-                                                    let
-                                                        y =
-                                                            y_
-                                                    in
-                                                    ( yScaleConvert 0, y, y )
+                                                (\( y0, y1, extend ) ->
+                                                    ( yScaleConvert y0, yScaleConvert y1, 0 )
                                                 )
                                         )
                                     )
@@ -403,14 +399,9 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                                         ( ( x, x )
                                         , reading
                                             |> Tuple.second
-                                            >> Maybe.map (Tuple3.second >> yScaleConvert)
                                             |> Maybe.map
-                                                (\y_ ->
-                                                    let
-                                                        y =
-                                                            y_
-                                                    in
-                                                    ( yScaleConvert 0, y, y )
+                                                (\( y0, y1, extend ) ->
+                                                    ( yScaleConvert y0, yScaleConvert y1, 0 )
                                                 )
                                         )
                                     )

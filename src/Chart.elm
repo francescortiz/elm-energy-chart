@@ -1,12 +1,17 @@
 module Chart exposing
     ( DataSet
+    , Layer(..)
     , ReadingType(..)
+    , add
     , addDataSet
     , empty
     , posixToFloat
     , render
     )
 
+import Chart.Layers.XAxis as XAxis
+import Chart.Layers.YAxis as YAxis
+import Chart.Types exposing (Padding)
 import Html exposing (Html, text)
 import List.Extra
 import Path
@@ -104,10 +109,30 @@ type alias ChartConfig =
     }
 
 
+type Layer
+    = DataSetLayer InternalDataSet
+    | YAxis YAxis.Options
+    | XAxis XAxis.Options
+
+
 type Chart
     = Chart
-        { layers : List InternalDataSet
+        { layers : List Layer
         }
+
+
+
+-- HELPERS
+
+
+isDataSetLayer : Layer -> Maybe InternalDataSet
+isDataSetLayer layer =
+    case layer of
+        DataSetLayer internalDataset ->
+            Just internalDataset
+
+        _ ->
+            Nothing
 
 
 posixToFloat : Posix -> Float
@@ -137,12 +162,13 @@ empty =
 
 
 addDataSet : DataSet reading -> Chart -> Chart
-addDataSet dataSet (Chart { layers }) =
+addDataSet dataSet (Chart chart) =
     Chart
-        { layers =
-            List.append layers
-                [ dataSetMapper dataSet
-                ]
+        { chart
+            | layers =
+                List.append chart.layers
+                    [ DataSetLayer (dataSetMapper dataSet)
+                    ]
         }
 
 
@@ -269,6 +295,41 @@ seriesToInteral index series =
     }
 
 
+add : Layer -> Chart -> Chart
+add layer (Chart chart) =
+    Chart
+        { chart
+            | layers = layer :: chart.layers
+        }
+
+
+contributeLayerToPadding : Layer -> Padding
+contributeLayerToPadding layer =
+    case layer of
+        DataSetLayer _ ->
+            Padding 0 0 0 0
+
+        YAxis options ->
+            YAxis.contributeToPadding options
+
+        XAxis options ->
+            XAxis.contributeToPadding options
+
+
+sumPaddings : List Padding -> Padding
+sumPaddings paddings =
+    paddings
+        |> List.foldr
+            (\accPadding { top, right, bottom, left } ->
+                { top = accPadding.top + top
+                , right = accPadding.right + right
+                , bottom = accPadding.bottom + bottom
+                , left = accPadding.left + left
+                }
+            )
+            (Padding 0 0 0 0)
+
+
 render :
     { size : ( Float, Float )
     , startTime : Posix
@@ -281,15 +342,22 @@ render options (Chart { layers }) =
         ( width, height ) =
             options.size
 
-        verticalPadding =
-            lineWidth
+        halfLineWidth =
+            lineWidth / 2
 
-        horizontalPadding =
-            lineWidth
+        padding =
+            layers
+                |> List.map contributeLayerToPadding
+                |> List.append [ Padding halfLineWidth halfLineWidth halfLineWidth halfLineWidth ]
+                |> sumPaddings
+
+        dataSetLayers =
+            layers
+                |> List.filterMap isDataSetLayer
 
         -- for the stroke
         ( minY, maxY ) =
-            layers
+            dataSetLayers
                 |> List.foldl
                     (\{ readingsList } ( dataSetMinY, dataSetMaxY ) ->
                         readingsList
@@ -310,10 +378,8 @@ render options (Chart { layers }) =
                                                 ( min seriesMinY v, max seriesMaxY v )
                                             )
                                             ( accMinY, accMaxY )
-                                        |> Debug.log "( accMinY, accMaxY )"
                                 )
                                 ( dataSetMinY, dataSetMaxY )
-                            |> Debug.log "( minY, maxY )"
                     )
                     ( 0, 0 )
 
@@ -324,10 +390,10 @@ render options (Chart { layers }) =
             posixToFloat options.endTime
 
         xScale =
-            Scale.linear ( 0, width - horizontalPadding ) ( minX, maxX )
+            Scale.linear ( 0, width - padding.left - padding.right ) ( minX, maxX )
 
         yScale =
-            Scale.linear ( 0, height - verticalPadding ) ( minY, maxY )
+            Scale.linear ( 0, height - padding.top - padding.bottom ) ( minY, maxY )
 
         zeroY =
             Scale.convert yScale 0
@@ -350,11 +416,11 @@ render options (Chart { layers }) =
         [ g
             [ class [ "series" ]
             , transform
-                [ Translate (0 + horizontalPadding / 2) (height - verticalPadding / 2)
+                [ Translate padding.left (height - padding.bottom)
                 , TypeSvgAttribute.Scale 1 -1
                 ]
             ]
-            (layers
+            (dataSetLayers
                 |> List.concatMap
                     (\{ readingsList, seriesList, readingType, stack } ->
                         List.map2 (renderDataSet chartConfig readingType stack) seriesList readingsList
@@ -437,17 +503,15 @@ renderAccumulatedSeries chartConfig internalSeries ( ( x0, x1 ), readingValue ) 
         { zeroY } =
             chartConfig
     in
-    case Debug.log "readingValue" readingValue of
+    case readingValue of
         Just ( y0, y1, _ ) ->
             let
                 ( y_, h ) =
-                    (if y1 < y0 then
+                    if y1 < y0 then
                         ( y1, y0 )
 
-                     else
+                    else
                         ( y0, y1 )
-                    )
-                        |> Debug.log "( y_, h )"
             in
             rect
                 [ class [ "series-" ++ internalSeries.label ]
@@ -520,7 +584,6 @@ renderPointSeries chartConfig internalSeries readings =
         |> List.map
             (\( ( x, _ ), v ) ->
                 v
-                    |> Debug.log ("v" ++ String.fromInt internalSeries.index)
                     |> Maybe.map
                         (\( _, y1, _ ) ->
                             ( x

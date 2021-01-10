@@ -1,7 +1,9 @@
 module Main exposing (..)
 
 import Browser
-import Chart
+import Chart exposing (Layer(..))
+import Chart.Layers.XAxis as X
+import Chart.Layers.YAxis as YAxis
 import Color
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (style)
@@ -155,6 +157,17 @@ makeChart stack =
                     }
             , stack = stack
             }
+        |> Chart.add
+            (YAxis
+                { placement = YAxis.Inside
+                , position = YAxis.Right
+                }
+            )
+        |> Chart.add
+            (XAxis
+                { renderer = X.TimeSeries
+                }
+            )
         |> Chart.render
             { size = ( 1000, 400 )
             , startTime = millisToPosix 0

@@ -1,9 +1,9 @@
 module Main exposing (..)
 
 import Browser
-import Chart exposing (Layer(..))
-import Chart.Layers.XAxis as X
-import Chart.Layers.YAxis as YAxis
+import Chart exposing (AccumulatedLayers, Element(..), PointLayer(..))
+import Chart.Elements.XAxis as X
+import Chart.Elements.YAxis as YAxis
 import Color
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (style)
@@ -36,29 +36,29 @@ makeChart stack =
                 [ { start = 0
                   , end = 1000000
                   , a = 1234
-                  , b = 22
+                  , b = Just 22
                   }
                 , { start = 1000000
                   , end = 1100000
                   , a = 44
-                  , b = 22
+                  , b = Nothing
                   }
                 , { start = 1100000
                   , end = 2000000
                   , a = 2345
-                  , b = 12
+                  , b = Just 12
                   }
                 ]
             , seriesList =
-                [ { label = "Series B"
-                  , accessor = .b >> Just
-                  , fill = Paint Color.blue
+                [ { label = "Series A"
+                  , accessor = .a >> Just
+                  , fill = Paint Color.green
                   , line = Paint Color.black
                   , gapFill = Paint Color.gray
                   }
-                , { label = "Series A"
-                  , accessor = .a >> Just
-                  , fill = Paint Color.green
+                , { label = "Series B"
+                  , accessor = .b
+                  , fill = Paint Color.blue
                   , line = Paint Color.black
                   , gapFill = Paint Color.gray
                   }
@@ -67,6 +67,10 @@ makeChart stack =
                 Chart.Accumulated
                     { startAccessor = .start
                     , endAccessor = .end
+                    , layers =
+                        { solid = True
+                        , gaps = True
+                        }
                     }
             , stack = stack
             }
@@ -111,28 +115,23 @@ makeChart stack =
         --    }
         |> Chart.addDataSet
             { readings =
-                [ { start = 500
-                  , end = 500
+                [ { time = 500
                   , a = 123
                   , b = 100
                   }
-                , { start = 800000
-                  , end = 800000
+                , { time = 800000
                   , a = 4
                   , b = 5000
                   }
-                , { start = 1200000
-                  , end = 1200000
+                , { time = 1200000
                   , a = 234
                   , b = 100
                   }
-                , { start = 1500000
-                  , end = 1500000
+                , { time = 1500000
                   , a = 534
                   , b = 100
                   }
-                , { start = 2000000
-                  , end = 2000000
+                , { time = 2000000
                   , a = 734
                   , b = 900
                   }
@@ -153,14 +152,18 @@ makeChart stack =
                 ]
             , readingType =
                 Chart.Point
-                    { xAccessor = .end
+                    { xAccessor = .time
+                    , layers =
+                        [ LineLayer
+                        , FillLayer
+                        ]
                     }
             , stack = stack
             }
         |> Chart.add
             (YAxis
                 { placement = YAxis.Inside
-                , position = YAxis.Right
+                , position = YAxis.Left
                 }
             )
         |> Chart.add
@@ -177,7 +180,7 @@ makeChart stack =
 
 view : Model -> Html Msg
 view model =
-    div [ style "width" "1000px", style "margin" "auto" ]
+    div [ style "width" "1000px", style "margin" "auto", style "margin" "auto" ]
         [ makeChart False
         , makeChart True
         ]

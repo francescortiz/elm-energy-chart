@@ -1,4 +1,4 @@
-module Chart.Layers.XAxis exposing (..)
+module Chart.Elements.XAxis exposing (..)
 
 import Chart.Types exposing (Padding)
 

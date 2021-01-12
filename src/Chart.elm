@@ -1,6 +1,8 @@
 module Chart exposing
-    ( DataSet
-    , Layer(..)
+    ( AccumulatedLayers
+    , DataSet
+    , Element(..)
+    , PointLayer(..)
     , ReadingType(..)
     , add
     , addDataSet
@@ -9,14 +11,15 @@ module Chart exposing
     , render
     )
 
-import Chart.Layers.XAxis as XAxis
-import Chart.Layers.YAxis as YAxis
-import Chart.Types exposing (Padding)
+import Chart.Elements.XAxis as XAxis
+import Chart.Elements.YAxis as YAxis
+import Chart.Types exposing (InternalDatum, Padding)
 import Html exposing (Html, text)
 import List.Extra
 import Path
 import Scale exposing (ContinuousScale)
 import Shape
+import SubPath exposing (SubPath)
 import Time exposing (Posix, posixToMillis)
 import Tuple3
 import TypedSvg exposing (g, rect, svg)
@@ -30,8 +33,8 @@ import TypedSvg.Types as TypeSvgAttribute exposing (Paint(..), Transform(..))
 -- CONSTANTS
 
 
-lineWidth : Float
-lineWidth =
+defaultLineWidth : Float
+defaultLineWidth =
     2
 
 
@@ -57,26 +60,26 @@ type alias InternalSeries =
     }
 
 
-type alias InternalDatum =
-    --
-    ( ( Float -- x
-      , Float -- width
-      )
-    , Maybe
-        ( Float -- y
-        , Float -- height
-        , Float -- extend = y + height
-        )
-    )
+type alias AccumulatedLayers =
+    { solid : Bool
+    , gaps : Bool
+    }
+
+
+type PointLayer
+    = LineLayer
+    | FillLayer
 
 
 type ReadingType reading
     = Accumulated
         { startAccessor : reading -> Float
         , endAccessor : reading -> Float
+        , layers : AccumulatedLayers
         }
     | Point
         { xAccessor : reading -> Float
+        , layers : List PointLayer
         }
 
 
@@ -109,15 +112,15 @@ type alias ChartConfig =
     }
 
 
-type Layer
-    = DataSetLayer InternalDataSet
+type Element
+    = DataSetElement InternalDataSet
     | YAxis YAxis.Options
     | XAxis XAxis.Options
 
 
 type Chart
     = Chart
-        { layers : List Layer
+        { elements : List Element
         }
 
 
@@ -125,10 +128,10 @@ type Chart
 -- HELPERS
 
 
-isDataSetLayer : Layer -> Maybe InternalDataSet
-isDataSetLayer layer =
-    case layer of
-        DataSetLayer internalDataset ->
+isDataSetElement : Element -> Maybe InternalDataSet
+isDataSetElement element =
+    case element of
+        DataSetElement internalDataset ->
             Just internalDataset
 
         _ ->
@@ -157,7 +160,7 @@ unzip3 triplets =
 empty : Chart
 empty =
     Chart
-        { layers = []
+        { elements = []
         }
 
 
@@ -165,9 +168,9 @@ addDataSet : DataSet reading -> Chart -> Chart
 addDataSet dataSet (Chart chart) =
     Chart
         { chart
-            | layers =
-                List.append chart.layers
-                    [ DataSetLayer (dataSetMapper dataSet)
+            | elements =
+                List.append chart.elements
+                    [ DataSetElement (dataSetMapper dataSet)
                     ]
         }
 
@@ -192,23 +195,31 @@ dataSetMapper dataSet =
                                             |> List.foldl
                                                 (\series ( allValues, minY, maxY ) ->
                                                     let
-                                                        value =
+                                                        value_ =
                                                             series.accessor reading
-                                                                |> Maybe.withDefault 0
 
-                                                        ( y0, y1, extend ) =
-                                                            if stack then
-                                                                if value > 0 then
-                                                                    ( maxY, value + maxY, value + maxY )
+                                                        ( mappedValue, y0, y1 ) =
+                                                            case value_ of
+                                                                Just value ->
+                                                                    let
+                                                                        ( y0_, y1_, extend ) =
+                                                                            if stack then
+                                                                                if value > 0 then
+                                                                                    ( maxY, value + maxY, value + maxY )
 
-                                                                else
-                                                                    ( minY, value + minY, value + minY )
+                                                                                else
+                                                                                    ( minY, value + minY, value + minY )
 
-                                                            else
-                                                                ( 0, value, value )
+                                                                            else
+                                                                                ( 0, value, value )
+                                                                    in
+                                                                    ( Just ( y0_, y1_, extend ), y0_, y1_ )
+
+                                                                Nothing ->
+                                                                    ( Nothing, 0, 0 )
                                                     in
                                                     ( ( ( startAccessor reading, endAccessor reading )
-                                                      , Just ( y0, y1, extend )
+                                                      , mappedValue
                                                       )
                                                         :: allValues
                                                     , min minY y0
@@ -273,14 +284,18 @@ dataSetMapper dataSet =
             |> List.indexedMap seriesToInteral
     , readingType =
         case readingType of
-            Accumulated _ ->
+            Accumulated { layers } ->
                 Accumulated
                     { startAccessor = Tuple.first >> Tuple.first
                     , endAccessor = Tuple.first >> Tuple.second
+                    , layers = layers
                     }
 
-            Point _ ->
-                Point { xAccessor = Tuple.first >> Tuple.first }
+            Point { layers } ->
+                Point
+                    { xAccessor = Tuple.first >> Tuple.first
+                    , layers = layers
+                    }
     , stack = stack
     }
 
@@ -295,18 +310,18 @@ seriesToInteral index series =
     }
 
 
-add : Layer -> Chart -> Chart
-add layer (Chart chart) =
+add : Element -> Chart -> Chart
+add element (Chart chart) =
     Chart
         { chart
-            | layers = layer :: chart.layers
+            | elements = element :: chart.elements
         }
 
 
-contributeLayerToPadding : Layer -> Padding
-contributeLayerToPadding layer =
-    case layer of
-        DataSetLayer _ ->
+contributeElementToPadding : Element -> Padding
+contributeElementToPadding element =
+    case element of
+        DataSetElement _ ->
             Padding 0 0 0 0
 
         YAxis options ->
@@ -337,27 +352,27 @@ render :
     }
     -> Chart
     -> Html msg
-render options (Chart { layers }) =
+render options (Chart { elements }) =
     let
         ( width, height ) =
             options.size
 
         halfLineWidth =
-            lineWidth / 2
+            defaultLineWidth / 2
 
         padding =
-            layers
-                |> List.map contributeLayerToPadding
+            elements
+                |> List.map contributeElementToPadding
                 |> List.append [ Padding halfLineWidth halfLineWidth halfLineWidth halfLineWidth ]
                 |> sumPaddings
 
-        dataSetLayers =
-            layers
-                |> List.filterMap isDataSetLayer
+        dataSetElements =
+            elements
+                |> List.filterMap isDataSetElement
 
         -- for the stroke
         ( minY, maxY ) =
-            dataSetLayers
+            dataSetElements
                 |> List.foldl
                     (\{ readingsList } ( dataSetMinY, dataSetMaxY ) ->
                         readingsList
@@ -420,7 +435,7 @@ render options (Chart { layers }) =
                 , TypeSvgAttribute.Scale 1 -1
                 ]
             ]
-            (dataSetLayers
+            (dataSetElements
                 |> List.concatMap
                     (\{ readingsList, seriesList, readingType, stack } ->
                         List.map2 (renderDataSet chartConfig readingType stack) seriesList readingsList
@@ -438,7 +453,7 @@ renderDataSet chartConfig readingType stack internalSeries readings =
         dataSetRenderer : List (Svg msg)
         dataSetRenderer =
             case readingType of
-                Accumulated { startAccessor, endAccessor } ->
+                Accumulated { startAccessor, endAccessor, layers } ->
                     let
                         startAccessorScale =
                             startAccessor >> xScaleConvert
@@ -461,9 +476,9 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                                     )
                     in
                     readingsMapped
-                        |> List.map (renderAccumulatedSeries chartConfig internalSeries)
+                        |> List.map (renderAccumulatedSeries layers chartConfig internalSeries)
 
-                Point { xAccessor } ->
+                Point { xAccessor, layers } ->
                     let
                         xAccessorScale =
                             xAccessor >> xScaleConvert
@@ -487,76 +502,156 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                                     )
                     in
                     readingsMapped
-                        |> renderPointSeries chartConfig internalSeries
+                        |> renderPointSeries layers chartConfig internalSeries
     in
     dataSetRenderer
         |> g [ class [ "dataset" ] ]
 
 
 renderAccumulatedSeries :
-    ChartConfig
+    AccumulatedLayers
+    -> ChartConfig
     -> InternalSeries
     -> InternalDatum
     -> Svg msg
-renderAccumulatedSeries chartConfig internalSeries ( ( x0, x1 ), readingValue ) =
+renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingValue ) =
     let
         { zeroY } =
             chartConfig
     in
     case readingValue of
-        Just ( y0, y1, _ ) ->
+        Just ( y0__, y1__, _ ) ->
             let
-                ( y_, h ) =
-                    if y1 < y0 then
-                        ( y1, y0 )
+                ( y0, y1 ) =
+                    if y1__ < y0__ then
+                        ( y1__, y0__ )
 
                     else
-                        ( y0, y1 )
+                        ( y0__, y1__ )
             in
-            rect
-                [ class [ "series-" ++ internalSeries.label ]
-                , fill <| internalSeries.fill
-                , stroke <| internalSeries.fill
-                , strokeWidth 0.35
-                , x x0
-                , y y_
-                , width (x1 - x0)
-                , height (h - y_)
-                ]
-                []
+            if layers.solid then
+                renderSeriesRect internalSeries.index internalSeries.fill x0 x1 y0 y1
+
+            else
+                text ""
 
         Nothing ->
             let
                 { minY, maxY } =
                     chartConfig
             in
-            rect
-                [ class [ "series-" ++ internalSeries.label ]
-                , fill internalSeries.gapFill
-                , stroke internalSeries.gapFill
-                , strokeWidth 0.35
-                , x x0
-                , y minY
-                , width (x1 - x0)
-                , height (maxY - minY)
-                ]
-                []
+            if layers.gaps then
+                renderSeriesRect internalSeries.index internalSeries.gapFill x0 x1 minY maxY
+
+            else
+                text ""
+
+
+renderSeriesRect : Int -> Paint -> Float -> Float -> Float -> Float -> Html msg
+renderSeriesRect index fillPaint x0 x1 y0 y1 =
+    rect
+        [ class [ "series-" ++ String.fromInt index ]
+        , fill fillPaint
+        , stroke fillPaint
+        , strokeWidth 0.35
+        , x x0
+        , y y0
+        , width (x1 - x0)
+        , height (y1 - y0)
+        ]
+        []
+
+
+renderAccumulatedGap : Int -> Paint -> Float -> Float -> Float -> Float -> Html msg
+renderAccumulatedGap index fillPaint x0 x1 y0 y1 =
+    rect
+        [ class [ "series-" ++ String.fromInt index ]
+        , fill fillPaint
+        , stroke fillPaint
+        , strokeWidth 0.35
+        , x x0
+        , y y0
+        , width (x1 - x0)
+        , height (y1 - y0)
+        ]
+        []
 
 
 renderPointSeries :
-    ChartConfig
+    List PointLayer
+    -> ChartConfig
     -> InternalSeries
     -> List InternalDatum
     -> List (Svg msg)
-renderPointSeries chartConfig internalSeries readings =
+renderPointSeries layers chartConfig internalSeries readings =
     let
-        { zeroY } =
-            chartConfig
-
         shape =
             Shape.monotoneInXCurve
+
+        renderedLayers =
+            layers
+                |> List.map (renderPointLayer shape defaultLineWidth internalSeries.line internalSeries.fill readings)
     in
-    [ readings
+    [ g
+        [ class [ "series-" ++ String.fromInt internalSeries.index ]
+        ]
+        renderedLayers
+    ]
+
+
+renderPointLayer :
+    (List ( Float, Float ) -> SubPath)
+    -> Float
+    -> Paint
+    -> Paint
+    -> List InternalDatum
+    -> PointLayer
+    -> Svg msg
+renderPointLayer shape lineWidth linePaint fillPaint readings layer =
+    case layer of
+        LineLayer ->
+            pointLayerLine shape lineWidth linePaint readings
+
+        FillLayer ->
+            pointLayerFill shape lineWidth fillPaint readings
+
+
+pointLayerLine :
+    (List ( Float, Float ) -> SubPath)
+    -> Float
+    -> Paint
+    -> List InternalDatum
+    -> Svg msg
+pointLayerLine shape lineWidth linePaint readings =
+    readings
+        |> List.map
+            (\( ( x, _ ), v ) ->
+                v
+                    |> Maybe.map
+                        (\( _, y1, _ ) ->
+                            ( x
+                            , y1
+                            )
+                        )
+            )
+        |> Shape.line shape
+        |> (\path ->
+                Path.element path
+                    [ stroke linePaint
+                    , strokeWidth lineWidth
+                    , fill PaintNone
+                    ]
+           )
+
+
+pointLayerFill :
+    (List ( Float, Float ) -> SubPath)
+    -> Float
+    -> Paint
+    -> List InternalDatum
+    -> Svg msg
+pointLayerFill shape lineWidth fillPaint readings =
+    readings
         |> List.map
             (\( ( x, _ ), v ) ->
                 v
@@ -577,26 +672,6 @@ renderPointSeries chartConfig internalSeries readings =
         |> (\path ->
                 Path.element path
                     [ strokeWidth lineWidth
-                    , fill internalSeries.fill
+                    , fill fillPaint
                     ]
            )
-    , readings
-        |> List.map
-            (\( ( x, _ ), v ) ->
-                v
-                    |> Maybe.map
-                        (\( _, y1, _ ) ->
-                            ( x
-                            , y1
-                            )
-                        )
-            )
-        |> Shape.line shape
-        |> (\path ->
-                Path.element path
-                    [ stroke internalSeries.line
-                    , strokeWidth lineWidth
-                    , fill PaintNone
-                    ]
-           )
-    ]

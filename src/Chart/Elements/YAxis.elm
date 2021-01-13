@@ -25,7 +25,7 @@ yTickRequestHeight =
 
 yTickrequestedPaddingTop : Float
 yTickrequestedPaddingTop =
-    28
+    27
 
 
 yTickRectWidth : Float

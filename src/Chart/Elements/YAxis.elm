@@ -148,7 +148,7 @@ yAxis chartConfig options =
                                     , fontWeight FontWeightBold
                                     , class [ "charts-common--axis-label" ]
                                     , fill "var(--text)"
-                                    , x (yTicksXPosition + 40)
+                                    , x (yTicksXPosition + yTickRectWidth / 2)
                                     , y -10
                                     , dy 0
                                     ]

@@ -13,7 +13,7 @@ module Chart exposing
 
 import Chart.Elements.XAxis as XAxis
 import Chart.Elements.YAxis as YAxis
-import Chart.Types exposing (InternalDatum, Padding)
+import Chart.Types exposing (ChartConfig, InternalDatum, Padding)
 import Html exposing (Html, text)
 import List.Extra
 import Path
@@ -96,19 +96,6 @@ type alias InternalDataSet =
     , seriesList : List InternalSeries
     , readingType : ReadingType InternalDatum
     , stack : Bool
-    }
-
-
-type alias ChartConfig =
-    { width : Float
-    , height : Float
-    , xScaleConvert : Float -> Float
-    , yScaleConvert : Float -> Float
-    , minX : Float
-    , maxX : Float
-    , minY : Float
-    , maxY : Float
-    , zeroY : Float
     }
 
 
@@ -336,6 +323,19 @@ contributeElementToPadding element =
             XAxis.contributeToPadding options
 
 
+contributeElementToMaxYTicks : Float -> Element -> Maybe Int
+contributeElementToMaxYTicks heightInPx element =
+    case element of
+        DataSetElement _ ->
+            Nothing
+
+        YAxis options ->
+            Just (YAxis.contributeToMaxYTicks heightInPx)
+
+        XAxis options ->
+            Nothing
+
+
 sumPaddings : List Padding -> Padding
 sumPaddings paddings =
     paddings
@@ -371,12 +371,21 @@ render options (Chart { elements }) =
                 |> List.append [ Padding halfLineWidth halfLineWidth halfLineWidth halfLineWidth ]
                 |> sumPaddings
 
+        canvasHeight =
+            height - padding.top - padding.bottom
+
+        maxYTicks =
+            elements
+                |> List.filterMap (contributeElementToMaxYTicks canvasHeight)
+                |> List.minimum
+                |> Maybe.withDefault 10
+
         dataSetElements =
             elements
                 |> List.filterMap isDataSetElement
 
         -- for the stroke
-        ( minY, maxY ) =
+        ( dirtyMinY, dirtyMaxY ) =
             dataSetElements
                 |> List.foldl
                     (\{ readingsList } ( dataSetMinY, dataSetMaxY ) ->
@@ -413,44 +422,81 @@ render options (Chart { elements }) =
             Scale.linear ( 0, width - padding.left - padding.right ) ( minX, maxX )
 
         yScale =
-            Scale.linear ( 0, height - padding.top - padding.bottom ) ( minY, maxY )
+            Scale.linear ( 0, canvasHeight ) ( dirtyMinY, dirtyMaxY )
+                |> Scale.nice maxYTicks
+
+        ( minY, maxY ) =
+            Scale.domain yScale
+
+        yTicksScaled =
+            Scale.ticks yScale maxYTicks
+                |> List.map yScaleConvert
+                |> Debug.log "yTicks"
 
         zeroY =
             Scale.convert yScale 0
 
+        yScaleConvert =
+            Scale.convert yScale
+
         chartConfig : ChartConfig
         chartConfig =
             { xScaleConvert = Scale.convert xScale
-            , yScaleConvert = Scale.convert yScale
+            , yScaleConvert = yScaleConvert
             , minX = minX
             , maxX = maxX
-            , minY = minY
-            , maxY = maxX
+            , minYScaled = yScaleConvert minY
+            , maxYScaled = yScaleConvert maxY
             , zeroY = zeroY
+            , yTicksScaled = yTicksScaled
             , width = width
             , height = height
+            , padding = padding
             }
     in
     svg
         [ viewBox 0 0 width height ]
         [ g
-            [ class [ "series" ]
-            , transform
-                [ Translate padding.left (height - padding.bottom)
-                , TypeSvgAttribute.Scale 1 -1
-                ]
+            [ class [ "chart" ]
             ]
-            (dataSetElements
-                |> List.concatMap
-                    (\{ readingsList, seriesList, readingType, stack } ->
-                        List.map2 (renderDataSet chartConfig readingType stack) seriesList readingsList
-                    )
+            (elements
+                |> List.map (renderElement chartConfig)
             )
         ]
 
 
-renderDataSet : ChartConfig -> ReadingType InternalDatum -> Bool -> InternalSeries -> List InternalDatum -> Svg msg
-renderDataSet chartConfig readingType stack internalSeries readings =
+renderElement : ChartConfig -> Element -> Svg msg
+renderElement chartConfig element =
+    let
+        { padding, height } =
+            chartConfig
+    in
+    case element of
+        DataSetElement internalDataSet ->
+            internalDataSet
+                |> renderDataSet chartConfig
+                |> g
+                    [ class [ "dataset" ]
+                    , transform
+                        [ Translate padding.left (height - padding.bottom)
+                        , TypeSvgAttribute.Scale 1 -1
+                        ]
+                    ]
+
+        YAxis options ->
+            YAxis.yAxis chartConfig options
+
+        XAxis options ->
+            XAxis.yAxis chartConfig options
+
+
+renderDataSet : ChartConfig -> InternalDataSet -> List (Svg msg)
+renderDataSet chartConfig { readingsList, seriesList, readingType, stack } =
+    List.map2 (renderDataSetSeries chartConfig readingType stack) seriesList readingsList
+
+
+renderDataSetSeries : ChartConfig -> ReadingType InternalDatum -> Bool -> InternalSeries -> List InternalDatum -> Svg msg
+renderDataSetSeries chartConfig readingType stack internalSeries readings =
     let
         { xScaleConvert, yScaleConvert } =
             chartConfig
@@ -510,7 +556,7 @@ renderDataSet chartConfig readingType stack internalSeries readings =
                         |> renderPointSeries layers chartConfig internalSeries
     in
     dataSetRenderer
-        |> g [ class [ "dataset" ] ]
+        |> g [ class [ "series", "series-" ++ String.fromInt internalSeries.index ] ]
 
 
 renderAccumulatedSeries :
@@ -542,11 +588,11 @@ renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingV
 
         Nothing ->
             let
-                { minY, maxY } =
+                { minYScaled, maxYScaled } =
                     chartConfig
             in
             if layers.gaps then
-                renderSeriesRect internalSeries.index internalSeries.gapFill x0 x1 minY maxY
+                renderSeriesRect internalSeries.index internalSeries.gapFill x0 x1 minYScaled maxYScaled
 
             else
                 text ""
@@ -554,21 +600,6 @@ renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingV
 
 renderSeriesRect : Int -> Paint -> Float -> Float -> Float -> Float -> Html msg
 renderSeriesRect index fillPaint x0 x1 y0 y1 =
-    rect
-        [ class [ "series-" ++ String.fromInt index ]
-        , fill fillPaint
-        , stroke fillPaint
-        , strokeWidth 0.35
-        , x x0
-        , y y0
-        , width (x1 - x0)
-        , height (y1 - y0)
-        ]
-        []
-
-
-renderAccumulatedGap : Int -> Paint -> Float -> Float -> Float -> Float -> Html msg
-renderAccumulatedGap index fillPaint x0 x1 y0 y1 =
     rect
         [ class [ "series-" ++ String.fromInt index ]
         , fill fillPaint
@@ -597,11 +628,7 @@ renderPointSeries layers chartConfig internalSeries readings =
             layers
                 |> List.map (renderPointLayer shape defaultLineWidth internalSeries.line internalSeries.fill readings)
     in
-    [ g
-        [ class [ "series-" ++ String.fromInt internalSeries.index ]
-        ]
-        renderedLayers
-    ]
+    renderedLayers
 
 
 renderPointLayer :

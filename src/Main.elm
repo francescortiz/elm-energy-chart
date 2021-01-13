@@ -74,45 +74,49 @@ makeChart stack =
                     }
             , stack = stack
             }
-        --|> Chart.addDataSet
-        --    { readings =
-        --        [ { start = 0
-        --          , end = 1000000
-        --          , a = 123
-        --          , b = -2
-        --          }
-        --        , { start = 1000000
-        --          , end = 1200000
-        --          , a = 4
-        --          , b = -22
-        --          }
-        --        , { start = 1200000
-        --          , end = 2000000
-        --          , a = 234
-        --          , b = -1
-        --          }
-        --        ]
-        --    , seriesList =
-        --        [ { label = "Series B"
-        --          , accessor = .b >> Just
-        --          , fill = Paint Color.orange
-        --          , line = Paint Color.black
-        --          , gapFill = Paint Color.gray
-        --          }
-        --        , { label = "Series A"
-        --          , accessor = .a >> Just
-        --          , fill = Paint Color.red
-        --          , line = Paint Color.black
-        --          , gapFill = Paint Color.gray
-        --          }
-        --        ]
-        --    , readingType =
-        --        Chart.Accumulated
-        --            { startAccessor = .start
-        --            , endAccessor = .end
-        --            }
-        --    , stack = stack
-        --    }
+        |> Chart.addDataSet
+            { readings =
+                [ { start = 0
+                  , end = 1000000
+                  , a = 123
+                  , b = -2
+                  }
+                , { start = 1000000
+                  , end = 1200000
+                  , a = 4
+                  , b = -22
+                  }
+                , { start = 1200000
+                  , end = 2000000
+                  , a = 234
+                  , b = -1
+                  }
+                ]
+            , seriesList =
+                [ { label = "Series B"
+                  , accessor = .b >> Just
+                  , fill = Paint Color.orange
+                  , line = Paint Color.black
+                  , gapFill = Paint Color.gray
+                  }
+                , { label = "Series A"
+                  , accessor = .a >> Just
+                  , fill = Paint Color.red
+                  , line = Paint Color.black
+                  , gapFill = Paint Color.gray
+                  }
+                ]
+            , readingType =
+                Chart.Accumulated
+                    { startAccessor = .start
+                    , endAccessor = .end
+                    , layers =
+                        { solid = True
+                        , gaps = True
+                        }
+                    }
+            , stack = stack
+            }
         |> Chart.addDataSet
             { readings =
                 [ { time = 500
@@ -121,7 +125,7 @@ makeChart stack =
                   }
                 , { time = 400000
                   , a = 4
-                  , b = Just 2990
+                  , b = Just 2890
                   }
                 , { time = 800000
                   , a = 420

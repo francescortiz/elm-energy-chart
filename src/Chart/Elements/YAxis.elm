@@ -1,6 +1,8 @@
 module Chart.Elements.YAxis exposing (..)
 
-import Chart.Types exposing (Padding)
+import Chart.Types exposing (ChartConfig, Padding)
+import TypedSvg exposing (text_)
+import TypedSvg.Core exposing (Svg, text)
 
 
 
@@ -10,6 +12,11 @@ import Chart.Types exposing (Padding)
 size : Float
 size =
     20
+
+
+tickHeight : Float
+tickHeight =
+    150
 
 
 
@@ -49,3 +56,19 @@ contributeToPadding { placement, position } =
 
                 Right ->
                     Padding 0 size 0 0
+
+
+contributeToMaxYTicks : Float -> Int
+contributeToMaxYTicks heightInPx =
+    heightInPx
+        / tickHeight
+        |> floor
+
+
+
+-- RENDER
+
+
+yAxis : ChartConfig -> Options -> Svg msg
+yAxis chartConfig options =
+    text_ [] [ text "Y AXIS" ]

@@ -117,23 +117,31 @@ makeChart stack =
             { readings =
                 [ { time = 500
                   , a = 123
-                  , b = 100
+                  , b = Just 100
+                  }
+                , { time = 400000
+                  , a = 4
+                  , b = Just 2990
                   }
                 , { time = 800000
-                  , a = 4
-                  , b = 5000
+                  , a = 420
+                  , b = Just 2000
                   }
                 , { time = 1200000
                   , a = 234
-                  , b = 100
+                  , b = Nothing
                   }
                 , { time = 1500000
                   , a = 534
-                  , b = 100
+                  , b = Just 100
+                  }
+                , { time = 1750000
+                  , a = 534
+                  , b = Just 80
                   }
                 , { time = 2000000
                   , a = 734
-                  , b = 900
+                  , b = Just 900
                   }
                 ]
             , seriesList =
@@ -144,7 +152,7 @@ makeChart stack =
                   , gapFill = Paint Color.gray
                   }
                 , { label = "Series B"
-                  , accessor = .b >> Just
+                  , accessor = .b
                   , fill = Paint <| Color.rgba 1 1 0 0.5
                   , line = Paint Color.black
                   , gapFill = Paint Color.gray

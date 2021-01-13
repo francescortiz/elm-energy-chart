@@ -245,25 +245,30 @@ dataSetMapper dataSet =
                                             |> List.foldl
                                                 (\series ( allValues, minY, maxY ) ->
                                                     let
-                                                        value =
-                                                            series.accessor reading
-                                                                |> Maybe.withDefault 0
+                                                        ( mappedValue, y0, y1 ) =
+                                                            case series.accessor reading of
+                                                                Just value ->
+                                                                    let
+                                                                        ( y0_, y1_, extent ) =
+                                                                            if stack then
+                                                                                if value > 0 then
+                                                                                    ( maxY, value + maxY, value + maxY )
 
-                                                        ( y0, y1, extend ) =
-                                                            if stack then
-                                                                if value > 0 then
-                                                                    ( maxY, value + maxY, value + maxY )
+                                                                                else
+                                                                                    ( minY, value + minY, value + minY )
 
-                                                                else
-                                                                    ( minY, value + minY, value + minY )
+                                                                            else
+                                                                                ( 0, value, value )
+                                                                    in
+                                                                    ( Just ( y0_, y1_, extent ), y0_, y1_ )
 
-                                                            else
-                                                                ( 0, value, value )
+                                                                Nothing ->
+                                                                    ( Nothing, 0, 0 )
                                                     in
                                                     ( ( ( xAccessor reading
                                                         , 0
                                                         )
-                                                      , Just ( y0, y1, extend )
+                                                      , mappedValue
                                                       )
                                                         :: allValues
                                                     , min minY y0

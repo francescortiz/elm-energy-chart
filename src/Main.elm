@@ -174,8 +174,9 @@ makeChart stack =
             }
         |> Chart.add
             (YAxis
-                { placement = YAxis.Inside
-                , position = YAxis.Left
+                { placement = YAxis.Outside
+                , position = YAxis.Right
+                , tickFormatter = String.fromFloat
                 }
             )
         |> Chart.add
@@ -192,9 +193,18 @@ makeChart stack =
 
 view : Model -> Html Msg
 view model =
-    div [ style "width" "1000px", style "margin" "auto", style "margin" "auto" ]
-        [ makeChart False
-        , makeChart True
+    div []
+        [ Html.node "style" [] [ text """
+        :root {
+            --border: red;
+            --background: orange;
+            --text: white;
+        }
+        """ ]
+        , div [ style "width" "1000px", style "margin" "auto", style "margin" "auto" ]
+            [ makeChart False
+            , makeChart True
+            ]
         ]
 
 

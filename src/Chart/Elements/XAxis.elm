@@ -25,4 +25,4 @@ contributeToPadding options =
 
 yAxis : ChartConfig -> Options -> Svg msg
 yAxis chartConfig options =
-    text_ [] [ text "Y AXIS" ]
+    text_ [] [ text "X AXIS" ]

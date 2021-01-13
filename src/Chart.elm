@@ -13,7 +13,7 @@ module Chart exposing
 
 import Chart.Elements.XAxis as XAxis
 import Chart.Elements.YAxis as YAxis
-import Chart.Types exposing (ChartConfig, InternalDatum, Padding)
+import Chart.Types exposing (ChartConfig, ChartTick, InternalDatum, Padding)
 import Html exposing (Html, text)
 import List.Extra
 import Path
@@ -156,9 +156,7 @@ addDataSet dataSet (Chart chart) =
     Chart
         { chart
             | elements =
-                List.append chart.elements
-                    [ DataSetElement (dataSetMapper dataSet)
-                    ]
+                DataSetElement (dataSetMapper dataSet) :: chart.elements
         }
 
 
@@ -428,10 +426,15 @@ render options (Chart { elements }) =
         ( minY, maxY ) =
             Scale.domain yScale
 
+        yTicksScaled : List ChartTick
         yTicksScaled =
             Scale.ticks yScale maxYTicks
-                |> List.map yScaleConvert
-                |> Debug.log "yTicks"
+                |> List.map
+                    (\tickValue ->
+                        { tickValue = tickValue
+                        , tickY = yScaleConvert tickValue
+                        }
+                    )
 
         zeroY =
             Scale.convert yScale 0
@@ -448,7 +451,7 @@ render options (Chart { elements }) =
             , minYScaled = yScaleConvert minY
             , maxYScaled = yScaleConvert maxY
             , zeroY = zeroY
-            , yTicksScaled = yTicksScaled
+            , yTicks = yTicksScaled
             , width = width
             , height = height
             , padding = padding
@@ -460,6 +463,7 @@ render options (Chart { elements }) =
             [ class [ "chart" ]
             ]
             (elements
+                |> List.reverse
                 |> List.map (renderElement chartConfig)
             )
         ]

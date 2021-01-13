@@ -22,6 +22,10 @@ type alias InternalDatum =
     )
 
 
+type alias ChartTick =
+    { tickValue : Float, tickY : Float }
+
+
 type alias ChartConfig =
     { width : Float
     , height : Float
@@ -32,6 +36,6 @@ type alias ChartConfig =
     , minYScaled : Float
     , maxYScaled : Float
     , zeroY : Float
-    , yTicksScaled : List Float
+    , yTicks : List ChartTick
     , padding : Padding
     }

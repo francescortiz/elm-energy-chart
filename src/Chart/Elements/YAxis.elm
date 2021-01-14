@@ -134,6 +134,9 @@ render options chartConfig =
                                 (if options.position == Right then
                                     0
 
+                                 else if options.placement == Inside then
+                                    0
+
                                  else
                                     yTicksXPosition
                                 )

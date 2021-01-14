@@ -110,7 +110,7 @@ render options chartConfig =
         drawTick { tickValue, tickPosition } ( tickList, isFirst ) =
             let
                 dashedAttributes =
-                    if not isFirst || yTickOutsideChart then
+                    if tickValue /= 0 then
                         [ strokeDasharray "5" ]
 
                     else

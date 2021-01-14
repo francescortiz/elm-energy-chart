@@ -11,8 +11,6 @@ module Chart exposing
     , render
     )
 
-import Chart.Elements.XAxis as XAxis
-import Chart.Elements.YAxis as YAxis
 import Chart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
 import Html exposing (Html, text)
 import List.Extra

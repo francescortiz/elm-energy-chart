@@ -1,11 +1,10 @@
 module Chart.Elements.XAxis exposing (..)
 
 import Chart.Types exposing (ChartConfig, ElementDefinition, Padding)
-import Scale
 import Svg.Attributes as RawSvg exposing (fill, stroke)
-import TypedSvg exposing (g, line, rect, text_)
-import TypedSvg.Attributes exposing (class, fontFamily, fontWeight, strokeDasharray, textAnchor, transform)
-import TypedSvg.Attributes.InPx exposing (dy, fontSize, height, rx, width, x, x1, x2, y, y1, y2)
+import TypedSvg exposing (g, line, text_)
+import TypedSvg.Attributes exposing (class, fontWeight, textAnchor, transform)
+import TypedSvg.Attributes.InPx exposing (fontSize, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (Svg, text)
 import TypedSvg.Types exposing (AnchorAlignment(..), FontWeight(..), Paint(..), Transform(..))
 

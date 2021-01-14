@@ -327,15 +327,15 @@ contributeElementToMaxYTicks heightInPx element =
             contributeToMaxYTicks heightInPx
 
 
-sumPaddings : List Padding -> Padding
-sumPaddings paddings =
+maxPaddings : List Padding -> Padding
+maxPaddings paddings =
     paddings
         |> List.foldr
             (\accPadding { top, right, bottom, left } ->
-                { top = accPadding.top + top
-                , right = accPadding.right + right
-                , bottom = accPadding.bottom + bottom
-                , left = accPadding.left + left
+                { top = max accPadding.top top
+                , right = max accPadding.right right
+                , bottom = max accPadding.bottom bottom
+                , left = max accPadding.left left
                 }
             )
             (Padding 0 0 0 0)
@@ -360,7 +360,7 @@ render options (Chart { elements }) =
             elements
                 |> List.map contributeElementToPadding
                 |> List.append [ Padding halfLineWidth halfLineWidth halfLineWidth halfLineWidth ]
-                |> sumPaddings
+                |> maxPaddings
 
         canvasHeight =
             height - padding.top - padding.bottom

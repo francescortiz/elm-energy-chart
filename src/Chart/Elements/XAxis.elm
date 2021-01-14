@@ -14,11 +14,6 @@ import TypedSvg.Types exposing (AnchorAlignment(..), FontWeight(..), Paint(..), 
 -- CONSTANTS
 
 
-requestedPaddingLeft : Float
-requestedPaddingLeft =
-    40
-
-
 xTickRequestWidth : Float
 xTickRequestWidth =
     40
@@ -50,6 +45,7 @@ type Renderer
 type alias Options =
     { renderer : Renderer
     , tickFormatter : Float -> String
+    , paddingLeft : Float
     , paddingBottom : Float
     }
 
@@ -60,7 +56,7 @@ type alias Options =
 
 contributeToPadding : Options -> Padding
 contributeToPadding options =
-    Padding 0 rotatedTextExtraPaddingRight options.paddingBottom requestedPaddingLeft
+    Padding 0 rotatedTextExtraPaddingRight options.paddingBottom options.paddingLeft
 
 
 contributeToMaxXTicks : Float -> Maybe Int

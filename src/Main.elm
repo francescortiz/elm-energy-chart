@@ -121,7 +121,7 @@ makeChart stack =
         |> Chart.addDataSet
             { readings =
                 [ { time = 500
-                  , a = 123
+                  , a = -123
                   , b = Just 100
                   }
                 , { time = 400000
@@ -175,7 +175,7 @@ makeChart stack =
             }
         |> Chart.add
             (Elements.yAxis
-                { placement = YAxis.Outside
+                { placement = YAxis.Inside
                 , position = YAxis.Right
                 , tickFormatter = String.fromFloat
                 }
@@ -184,13 +184,14 @@ makeChart stack =
             (Elements.xAxis
                 { renderer = X.TimeSeries
                 , tickFormatter = String.fromFloat
+                , paddingLeft = 40
                 , paddingBottom = 40
                 }
             )
         |> Chart.render
             { size = ( 1000, 400 )
-            , startTime = millisToPosix 1000000
-            , endTime = millisToPosix 2000000
+            , startTime = millisToPosix 0
+            , endTime = millisToPosix 3000000
             }
 
 

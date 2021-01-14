@@ -1,6 +1,6 @@
 module Chart.Elements.YAxis exposing (..)
 
-import Chart.Types exposing (ChartConfig, Padding)
+import Chart.Types exposing (ChartConfig, ElementDefinition, Padding)
 import Svg.Attributes exposing (fill, stroke)
 import TypedSvg exposing (g, line, rect, text_)
 import TypedSvg.Attributes exposing (class, fontFamily, fontWeight, strokeDasharray, textAnchor, transform)
@@ -73,25 +73,21 @@ contributeToPadding { placement, position } =
                     Padding yTickrequestedPaddingTop size 0 0
 
 
-contributeToMaxYTicks : Float -> Int
+contributeToMaxYTicks : Float -> Maybe Int
 contributeToMaxYTicks heightInPx =
     heightInPx
         / yTickRequestHeight
         |> floor
+        |> Just
 
 
 
 -- RENDER
 
 
-yAxis : ChartConfig -> Options -> Svg msg
-yAxis chartConfig options =
+render : Options -> ChartConfig -> Svg msg
+render options chartConfig =
     let
-        yTickRectWidthString : String
-        yTickRectWidthString =
-            yTickRectWidth
-                |> String.fromFloat
-
         yTickRectPaddingRight =
             5
 
@@ -172,3 +168,15 @@ yAxis chartConfig options =
             |> List.foldl drawTick ( [], True )
             |> Tuple.first
         )
+
+
+
+-- MAIN
+
+
+createElement : Options -> ElementDefinition msg
+createElement options =
+    { contributeToPadding = contributeToPadding options
+    , contributeToMaxYTicks = contributeToMaxYTicks
+    , render = render options
+    }

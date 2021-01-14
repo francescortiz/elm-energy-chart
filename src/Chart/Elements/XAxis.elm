@@ -1,6 +1,6 @@
 module Chart.Elements.XAxis exposing (..)
 
-import Chart.Types exposing (ChartConfig, Padding)
+import Chart.Types exposing (ChartConfig, ElementDefinition, Padding)
 import TypedSvg exposing (text_)
 import TypedSvg.Core exposing (Svg, text)
 
@@ -23,6 +23,18 @@ contributeToPadding options =
 -- RENDER
 
 
-yAxis : ChartConfig -> Options -> Svg msg
-yAxis chartConfig options =
+render : Options -> ChartConfig -> Svg msg
+render options chartConfig =
     text_ [] [ text "X AXIS" ]
+
+
+
+-- MAIN
+
+
+createElement : Options -> ElementDefinition msg
+createElement options =
+    { contributeToPadding = contributeToPadding options
+    , contributeToMaxYTicks = always Nothing
+    , render = render options
+    }

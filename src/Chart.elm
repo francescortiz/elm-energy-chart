@@ -13,7 +13,7 @@ module Chart exposing
 
 import Chart.Elements.XAxis as XAxis
 import Chart.Elements.YAxis as YAxis
-import Chart.Types exposing (ChartConfig, ChartTick, InternalDatum, Padding)
+import Chart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
 import Html exposing (Html, text)
 import List.Extra
 import Path
@@ -99,15 +99,14 @@ type alias InternalDataSet =
     }
 
 
-type Element
+type Element msg
     = DataSetElement InternalDataSet
-    | YAxis YAxis.Options
-    | XAxis XAxis.Options
+    | Element (ElementDefinition msg)
 
 
-type Chart
+type Chart msg
     = Chart
-        { elements : List Element
+        { elements : List (Element msg)
         }
 
 
@@ -115,7 +114,7 @@ type Chart
 -- HELPERS
 
 
-isDataSetElement : Element -> Maybe InternalDataSet
+isDataSetElement : Element msg -> Maybe InternalDataSet
 isDataSetElement element =
     case element of
         DataSetElement internalDataset ->
@@ -144,14 +143,14 @@ unzip3 triplets =
     List.foldr step ( [], [], [] ) triplets
 
 
-empty : Chart
+empty : Chart msg
 empty =
     Chart
         { elements = []
         }
 
 
-addDataSet : DataSet reading -> Chart -> Chart
+addDataSet : DataSet reading -> Chart msg -> Chart msg
 addDataSet dataSet (Chart chart) =
     Chart
         { chart
@@ -300,38 +299,32 @@ seriesToInteral index series =
     }
 
 
-add : Element -> Chart -> Chart
+add : ElementDefinition msg -> Chart msg -> Chart msg
 add element (Chart chart) =
     Chart
         { chart
-            | elements = element :: chart.elements
+            | elements = Element element :: chart.elements
         }
 
 
-contributeElementToPadding : Element -> Padding
+contributeElementToPadding : Element msg -> Padding
 contributeElementToPadding element =
     case element of
         DataSetElement _ ->
             Padding 0 0 0 0
 
-        YAxis options ->
-            YAxis.contributeToPadding options
-
-        XAxis options ->
-            XAxis.contributeToPadding options
+        Element { contributeToPadding } ->
+            contributeToPadding
 
 
-contributeElementToMaxYTicks : Float -> Element -> Maybe Int
+contributeElementToMaxYTicks : Float -> Element msg -> Maybe Int
 contributeElementToMaxYTicks heightInPx element =
     case element of
         DataSetElement _ ->
             Nothing
 
-        YAxis options ->
-            Just (YAxis.contributeToMaxYTicks heightInPx)
-
-        XAxis options ->
-            Nothing
+        Element { contributeToMaxYTicks } ->
+            contributeToMaxYTicks heightInPx
 
 
 sumPaddings : List Padding -> Padding
@@ -353,7 +346,7 @@ render :
     , startTime : Posix
     , endTime : Posix
     }
-    -> Chart
+    -> Chart msg
     -> Html msg
 render options (Chart { elements }) =
     let
@@ -483,7 +476,7 @@ render options (Chart { elements }) =
         ]
 
 
-renderElement : ChartConfig -> Element -> Svg msg
+renderElement : ChartConfig -> Element msg -> Svg msg
 renderElement chartConfig element =
     let
         { padding, height } =
@@ -501,11 +494,8 @@ renderElement chartConfig element =
                         ]
                     ]
 
-        YAxis options ->
-            YAxis.yAxis chartConfig options
-
-        XAxis options ->
-            XAxis.yAxis chartConfig options
+        Element definition ->
+            definition.render chartConfig
 
 
 renderDataSet : ChartConfig -> InternalDataSet -> List (Svg msg)

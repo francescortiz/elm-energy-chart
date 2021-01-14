@@ -1,5 +1,7 @@
 module Chart.Types exposing (..)
 
+import Svg exposing (Svg)
+
 
 type alias Padding =
     { top : Float
@@ -38,4 +40,11 @@ type alias ChartConfig =
     , zeroY : Float
     , yTicks : List ChartTick
     , padding : Padding
+    }
+
+
+type alias ElementDefinition msg =
+    { contributeToPadding : Padding
+    , contributeToMaxYTicks : Float -> Maybe Int
+    , render : ChartConfig -> Svg msg
     }

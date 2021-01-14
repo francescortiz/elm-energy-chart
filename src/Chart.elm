@@ -20,9 +20,10 @@ import Path
 import Scale exposing (ContinuousScale)
 import Shape
 import SubPath exposing (SubPath)
+import Svg.Attributes as Attributes exposing (id)
 import Time exposing (Posix, posixToMillis)
 import Tuple3
-import TypedSvg exposing (g, rect, svg)
+import TypedSvg exposing (clipPath, defs, g, rect, svg)
 import TypedSvg.Attributes exposing (class, fill, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (height, strokeWidth, width, x, y)
 import TypedSvg.Core exposing (Svg)
@@ -490,22 +491,16 @@ render options (Chart { elements }) =
         ( minY, maxY ) =
             Scale.domain yScale
 
-        zeroY =
-            Scale.convert yScale 0
-
         chartConfig : ChartConfig
         chartConfig =
             { xScaleConvert = Scale.convert xScale
             , yScaleConvert = yScaleConvert
-            , minX = minX
-            , maxX = maxX
             , minYScaled = yScaleConvert minY
             , maxYScaled = yScaleConvert maxY
-            , zeroY = zeroY
             , xTicks = xTicksScaled
             , yTicks = yTicksScaled
-            , width = width
-            , height = height
+            , width = chartWidth
+            , height = chartHeight
             , padding = padding
             }
     in
@@ -633,10 +628,6 @@ renderAccumulatedSeries :
     -> InternalDatum
     -> Svg msg
 renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingValue ) =
-    let
-        { zeroY } =
-            chartConfig
-    in
     case readingValue of
         Just ( y0__, y1__, _ ) ->
             let

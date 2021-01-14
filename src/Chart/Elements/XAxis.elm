@@ -79,21 +79,7 @@ render : Options -> ChartConfig -> Svg msg
 render options chartConfig =
     let
         drawTick { tickValue, tickPosition } ( tickList, isFirst ) =
-            ( (if isFirst then
-                [ line
-                    [ stroke "var(--border)"
-                    , x1 -7
-                    , y1 0
-                    , x2 -7
-                    , y2 1000
-                    ]
-                    []
-                ]
-
-               else
-                []
-              )
-                ++ tickList
+            ( tickList
                 ++ [ g
                         [ class [ "tick" ]
                         , transform

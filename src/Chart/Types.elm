@@ -33,11 +33,8 @@ type alias ChartConfig =
     , height : Float
     , xScaleConvert : Float -> Float
     , yScaleConvert : Float -> Float
-    , minX : Float
-    , maxX : Float
     , minYScaled : Float
     , maxYScaled : Float
-    , zeroY : Float
     , xTicks : List ChartTick
     , yTicks : List ChartTick
     , padding : Padding

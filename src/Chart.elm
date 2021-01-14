@@ -360,7 +360,7 @@ render :
     -> Html msg
 render options (Chart { elements }) =
     let
-        ( width, height ) =
+        ( chartWidth, chartHeight ) =
             options.size
 
         halfLineWidth =
@@ -373,7 +373,7 @@ render options (Chart { elements }) =
                 |> maxPaddings
 
         canvasHeight =
-            height - padding.top - padding.bottom
+            chartHeight - padding.top - padding.bottom
 
         maxXTicks =
             elements
@@ -424,7 +424,7 @@ render options (Chart { elements }) =
             posixToFloat options.endTime
 
         xScaleNoTics =
-            Scale.linear ( 0, width - padding.left - padding.right ) ( minX, maxX )
+            Scale.linear ( 0, chartWidth - padding.left - padding.right ) ( minX, maxX )
 
         yScaleNoTics =
             Scale.linear ( 0, canvasHeight ) ( dirtyMinY, dirtyMaxY )
@@ -510,8 +510,19 @@ render options (Chart { elements }) =
             }
     in
     svg
-        [ viewBox 0 0 width height ]
-        [ g
+        [ viewBox 0 0 chartWidth chartHeight ]
+        [ defs []
+            [ clipPath [ id "plot-canvas-clip" ]
+                [ rect
+                    [ x 0
+                    , y 0
+                    , width (chartWidth - padding.left - padding.right)
+                    , height (chartHeight - padding.top - padding.bottom)
+                    ]
+                    []
+                ]
+            ]
+        , g
             [ class [ "chart" ]
             ]
             (elements
@@ -532,7 +543,10 @@ renderElement chartConfig element =
             internalDataSet
                 |> renderDataSet chartConfig
                 |> g
-                    [ class [ "dataset" ]
+                    [ Attributes.clipPath "url(#plot-canvas-clip)"
+                    , class
+                        [ "dataset"
+                        ]
                     , transform
                         [ Translate padding.left (height - padding.bottom)
                         , TypeSvgAttribute.Scale 1 -1

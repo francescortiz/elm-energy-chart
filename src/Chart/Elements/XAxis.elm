@@ -2,7 +2,7 @@ module Chart.Elements.XAxis exposing (..)
 
 import Chart.Types exposing (ChartConfig, ElementDefinition, Padding)
 import Scale
-import Svg.Attributes exposing (fill, stroke)
+import Svg.Attributes as RawSvg exposing (fill, stroke)
 import TypedSvg exposing (g, line, rect, text_)
 import TypedSvg.Attributes exposing (class, fontFamily, fontWeight, strokeDasharray, textAnchor, transform)
 import TypedSvg.Attributes.InPx exposing (dy, fontSize, height, rx, width, x, x1, x2, y, y1, y2)
@@ -24,6 +24,21 @@ xTickRequestWidth =
     40
 
 
+tickLineHeight : Float
+tickLineHeight =
+    5
+
+
+textExtraY : Float
+textExtraY =
+    12
+
+
+rotatedTextExtraPaddingRight : Float
+rotatedTextExtraPaddingRight =
+    4
+
+
 
 -- TYPES
 
@@ -35,6 +50,7 @@ type Renderer
 type alias Options =
     { renderer : Renderer
     , tickFormatter : Float -> String
+    , paddingBottom : Float
     }
 
 
@@ -44,7 +60,7 @@ type alias Options =
 
 contributeToPadding : Options -> Padding
 contributeToPadding options =
-    Padding 0 0 20 requestedPaddingLeft
+    Padding 0 rotatedTextExtraPaddingRight options.paddingBottom requestedPaddingLeft
 
 
 contributeToMaxXTicks : Float -> Maybe Int
@@ -88,10 +104,10 @@ render options chartConfig =
                         ]
                         [ line
                             [ stroke "var(--border)"
-                            , x1 -8
-                            , y1 0.5
-                            , x2 -1
-                            , y2 0.5
+                            , x1 0
+                            , y1 0
+                            , x2 0
+                            , y2 tickLineHeight
                             ]
                             []
                         , text_
@@ -101,8 +117,9 @@ render options chartConfig =
                             , fontWeight FontWeightBold
                             , class [ "charts-common--axis-label" ]
                             , fill "var(--text)"
-                            , x tickPosition
-                            , y 0.5
+                            , x -2
+                            , y (tickLineHeight + textExtraY)
+                            , RawSvg.transform "rotate(-20)"
                             ]
                             [ text (options.tickFormatter tickValue) ]
                         ]
@@ -111,15 +128,12 @@ render options chartConfig =
             )
     in
     g
-        [ fill "none"
-        , textAnchor AnchorEnd
+        [ class [ "x-axis" ]
         ]
-        [ g []
-            (chartConfig.xTicks
-                |> List.foldl drawTick ( [], True )
-                |> Tuple.first
-            )
-        ]
+        (chartConfig.xTicks
+            |> List.foldl drawTick ( [], True )
+            |> Tuple.first
+        )
 
 
 

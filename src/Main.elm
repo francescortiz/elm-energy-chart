@@ -184,11 +184,12 @@ makeChart stack =
             (Elements.xAxis
                 { renderer = X.TimeSeries
                 , tickFormatter = String.fromFloat
+                , paddingBottom = 40
                 }
             )
         |> Chart.render
             { size = ( 1000, 400 )
-            , startTime = millisToPosix 0
+            , startTime = millisToPosix 1000000
             , endTime = millisToPosix 2000000
             }
 

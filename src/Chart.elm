@@ -317,6 +317,16 @@ contributeElementToPadding element =
             contributeToPadding
 
 
+contributeElementToMaxXTicks : Float -> Element msg -> Maybe Int
+contributeElementToMaxXTicks heightInPx element =
+    case element of
+        DataSetElement _ ->
+            Nothing
+
+        Element { contributeToMaxXTicks } ->
+            contributeToMaxXTicks heightInPx
+
+
 contributeElementToMaxYTicks : Float -> Element msg -> Maybe Int
 contributeElementToMaxYTicks heightInPx element =
     case element of
@@ -365,6 +375,11 @@ render options (Chart { elements }) =
         canvasHeight =
             height - padding.top - padding.bottom
 
+        maxXTicks =
+            elements
+                |> List.filterMap (contributeElementToMaxXTicks canvasHeight)
+                |> List.minimum
+
         maxYTicks =
             elements
                 |> List.filterMap (contributeElementToMaxYTicks canvasHeight)
@@ -408,7 +423,7 @@ render options (Chart { elements }) =
         maxX =
             posixToFloat options.endTime
 
-        xScale =
+        xScaleNoTics =
             Scale.linear ( 0, width - padding.left - padding.right ) ( minX, maxX )
 
         yScaleNoTics =
@@ -430,7 +445,7 @@ render options (Chart { elements }) =
                         |> List.map
                             (\tickValue ->
                                 { tickValue = tickValue
-                                , tickY = yScaleConvert_ tickValue
+                                , tickPosition = yScaleConvert_ tickValue
                                 }
                             )
                     , yScaleConvert_
@@ -440,6 +455,35 @@ render options (Chart { elements }) =
                     ( yScaleNoTics
                     , []
                     , Scale.convert yScaleNoTics
+                    )
+                        |> Debug.log "no ticks"
+
+        ( xScale, xTicksScaled, xScaleConvert ) =
+            case maxXTicks of
+                Just xTickCount ->
+                    let
+                        xScale_ =
+                            xScaleNoTics
+                                |> Scale.nice xTickCount
+
+                        xScaleConvert_ =
+                            Scale.convert xScale_
+                    in
+                    ( xScale_
+                    , Scale.ticks xScale_ xTickCount
+                        |> List.map
+                            (\tickValue ->
+                                { tickValue = tickValue
+                                , tickPosition = xScaleConvert_ tickValue
+                                }
+                            )
+                    , xScaleConvert_
+                    )
+
+                Nothing ->
+                    ( xScaleNoTics
+                    , []
+                    , Scale.convert xScaleNoTics
                     )
                         |> Debug.log "no ticks"
 
@@ -458,6 +502,7 @@ render options (Chart { elements }) =
             , minYScaled = yScaleConvert minY
             , maxYScaled = yScaleConvert maxY
             , zeroY = zeroY
+            , xTicks = xTicksScaled
             , yTicks = yTicksScaled
             , width = width
             , height = height

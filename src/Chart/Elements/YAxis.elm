@@ -23,8 +23,8 @@ yTickRequestHeight =
     40
 
 
-yTickrequestedPaddingTop : Float
-yTickrequestedPaddingTop =
+requestedPaddingTop : Float
+requestedPaddingTop =
     27
 
 
@@ -62,15 +62,15 @@ contributeToPadding : Options -> Padding
 contributeToPadding { placement, position } =
     case placement of
         Inside ->
-            Padding yTickrequestedPaddingTop 0 0 0
+            Padding requestedPaddingTop 0 0 0
 
         Outside ->
             case position of
                 Left ->
-                    Padding yTickrequestedPaddingTop 0 0 size
+                    Padding requestedPaddingTop 0 0 size
 
                 Right ->
-                    Padding yTickrequestedPaddingTop size 0 0
+                    Padding requestedPaddingTop size 0 0
 
 
 contributeToMaxYTicks : Float -> Maybe Int
@@ -91,17 +91,23 @@ render options chartConfig =
         yTickRectPaddingRight =
             5
 
+        yTickOutsideChart =
+            options.placement == Outside
+
         yTicksXPosition =
             if options.position == Right then
-                chartConfig.width - yTickRectWidth - yTickRectPaddingRight
+                chartConfig.width
+                    - chartConfig.padding.left
+                    - yTickRectWidth
+                    - yTickRectPaddingRight
+
+            else if yTickOutsideChart then
+                -yTickRectWidth - yTickRectPaddingRight
 
             else
                 yTickRectPaddingRight
 
-        yTickOutsideChart =
-            options.placement == Outside
-
-        drawTick { tickValue, tickY } ( tickList, isFirst ) =
+        drawTick { tickValue, tickPosition } ( tickList, isFirst ) =
             let
                 dashedAttributes =
                     if not isFirst || yTickOutsideChart then
@@ -113,13 +119,35 @@ render options chartConfig =
             ( tickList
                 ++ [ g
                         [ class [ "tick" ]
-                        , transform [ Translate 0 (chartConfig.height - chartConfig.padding.bottom - tickY) ]
+                        , transform
+                            [ Translate
+                                chartConfig.padding.left
+                                (chartConfig.height
+                                    - chartConfig.padding.bottom
+                                    - tickPosition
+                                )
+                            ]
                         ]
                         [ line
                             ([ stroke "var(--border)"
-                             , x1 10000
+                             , x1
+                                (if options.position == Right then
+                                    0
+
+                                 else
+                                    yTicksXPosition
+                                )
                              , y1 0.5
-                             , x2 0
+                             , x2
+                                (chartConfig.width
+                                    - chartConfig.padding.left
+                                    - (if yTickOutsideChart then
+                                        0
+
+                                       else
+                                        chartConfig.padding.right
+                                      )
+                                )
                              , y2 0.5
                              ]
                                 ++ dashedAttributes
@@ -138,7 +166,6 @@ render options chartConfig =
                                     []
                                 , text_
                                     [ class [ "bar-chart-tick" ]
-                                    , fontFamily [ "proxima-nova" ]
                                     , textAnchor AnchorMiddle
                                     , fontSize 12
                                     , fontWeight FontWeightBold
@@ -160,8 +187,6 @@ render options chartConfig =
     in
     g
         [ class [ "y-axis" ]
-        , fontSize 10
-        , fontFamily [ "sans-serif" ]
         , textAnchor AnchorMiddle
         ]
         (chartConfig.yTicks
@@ -177,6 +202,7 @@ render options chartConfig =
 createElement : Options -> ElementDefinition msg
 createElement options =
     { contributeToPadding = contributeToPadding options
+    , contributeToMaxXTicks = always Nothing
     , contributeToMaxYTicks = contributeToMaxYTicks
     , render = render options
     }

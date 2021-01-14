@@ -175,7 +175,7 @@ makeChart stack =
             }
         |> Chart.add
             (Elements.yAxis
-                { placement = YAxis.Inside
+                { placement = YAxis.Outside
                 , position = YAxis.Right
                 , tickFormatter = String.fromFloat
                 }
@@ -183,6 +183,7 @@ makeChart stack =
         |> Chart.add
             (Elements.xAxis
                 { renderer = X.TimeSeries
+                , tickFormatter = String.fromFloat
                 }
             )
         |> Chart.render
@@ -199,7 +200,7 @@ view model =
         :root {
             --border: red;
             --background: orange;
-            --text: white;
+            --text: black;
         }
         div {
             background: #eee;

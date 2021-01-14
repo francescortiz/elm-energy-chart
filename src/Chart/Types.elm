@@ -25,7 +25,7 @@ type alias InternalDatum =
 
 
 type alias ChartTick =
-    { tickValue : Float, tickY : Float }
+    { tickValue : Float, tickPosition : Float }
 
 
 type alias ChartConfig =
@@ -38,6 +38,7 @@ type alias ChartConfig =
     , minYScaled : Float
     , maxYScaled : Float
     , zeroY : Float
+    , xTicks : List ChartTick
     , yTicks : List ChartTick
     , padding : Padding
     }
@@ -45,6 +46,7 @@ type alias ChartConfig =
 
 type alias ElementDefinition msg =
     { contributeToPadding : Padding
+    , contributeToMaxXTicks : Float -> Maybe Int
     , contributeToMaxYTicks : Float -> Maybe Int
     , render : ChartConfig -> Svg msg
     }

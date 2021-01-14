@@ -69,7 +69,7 @@ makeChart stack =
                     , endAccessor = .end
                     , layers =
                         { solid = True
-                        , gaps = True
+                        , gaps = False
                         }
                     }
             , stack = stack
@@ -175,7 +175,7 @@ makeChart stack =
         |> Chart.add
             (YAxis
                 { placement = YAxis.Outside
-                , position = YAxis.Right
+                , position = YAxis.Left
                 , tickFormatter = String.fromFloat
                 }
             )
@@ -200,10 +200,17 @@ view model =
             --background: orange;
             --text: white;
         }
+        div {
+            background: #eee;
+            padding: 10px;
+        }
+        svg {
+            background: #fff;
+        }
         """ ]
         , div [ style "width" "1000px", style "margin" "auto", style "margin" "auto" ]
-            [ makeChart False
-            , makeChart True
+            [ div [] [ makeChart False ]
+            , div [] [ makeChart True ]
             ]
         ]
 

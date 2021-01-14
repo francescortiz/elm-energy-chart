@@ -376,7 +376,6 @@ render options (Chart { elements }) =
             elements
                 |> List.filterMap (contributeElementToMaxYTicks canvasHeight)
                 |> List.minimum
-                |> Maybe.withDefault 10
 
         dataSetElements =
             elements
@@ -419,28 +418,43 @@ render options (Chart { elements }) =
         xScale =
             Scale.linear ( 0, width - padding.left - padding.right ) ( minX, maxX )
 
-        yScale =
+        yScaleNoTics =
             Scale.linear ( 0, canvasHeight ) ( dirtyMinY, dirtyMaxY )
-                |> Scale.nice maxYTicks
+
+        ( yScale, yTicksScaled, yScaleConvert ) =
+            case maxYTicks of
+                Just yTickCount ->
+                    let
+                        yScale_ =
+                            yScaleNoTics
+                                |> Scale.nice yTickCount
+
+                        yScaleConvert_ =
+                            Scale.convert yScale_
+                    in
+                    ( yScale_
+                    , Scale.ticks yScale_ yTickCount
+                        |> List.map
+                            (\tickValue ->
+                                { tickValue = tickValue
+                                , tickY = yScaleConvert_ tickValue
+                                }
+                            )
+                    , yScaleConvert_
+                    )
+
+                Nothing ->
+                    ( yScaleNoTics
+                    , []
+                    , Scale.convert yScaleNoTics
+                    )
+                        |> Debug.log "no ticks"
 
         ( minY, maxY ) =
             Scale.domain yScale
 
-        yTicksScaled : List ChartTick
-        yTicksScaled =
-            Scale.ticks yScale maxYTicks
-                |> List.map
-                    (\tickValue ->
-                        { tickValue = tickValue
-                        , tickY = yScaleConvert tickValue
-                        }
-                    )
-
         zeroY =
             Scale.convert yScale 0
-
-        yScaleConvert =
-            Scale.convert yScale
 
         chartConfig : ChartConfig
         chartConfig =

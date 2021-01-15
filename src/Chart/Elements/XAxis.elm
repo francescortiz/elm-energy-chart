@@ -37,13 +37,8 @@ rotatedTextExtraPaddingRight =
 -- TYPES
 
 
-type Renderer
-    = TimeSeries
-
-
 type alias Options =
-    { renderer : Renderer
-    , tickFormatter : Float -> String
+    { tickFormatter : ChartConfig -> Float -> String
     , paddingLeft : Float
     , paddingBottom : Float
     }
@@ -73,6 +68,9 @@ contributeToMaxXTicks widthInPx =
 render : Options -> ChartConfig -> Svg msg
 render options chartConfig =
     let
+        tickFormatter =
+            options.tickFormatter chartConfig
+
         drawTick { tickValue, tickPosition } ( tickList, isFirst ) =
             ( tickList
                 ++ [ g
@@ -102,7 +100,7 @@ render options chartConfig =
                             , y (tickLineHeight + textExtraY)
                             , RawSvg.transform "rotate(-20)"
                             ]
-                            [ text (options.tickFormatter tickValue) ]
+                            [ text (tickFormatter tickValue) ]
                         ]
                    ]
             , False

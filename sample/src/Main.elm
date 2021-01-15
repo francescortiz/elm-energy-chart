@@ -35,17 +35,17 @@ makeChart stack =
         |> Chart.addDataSet
             { readings =
                 [ { start = 0
-                  , end = 1000000
+                  , end = 100000000000
                   , a = 1234
                   , b = Just 22
                   }
-                , { start = 1000000
-                  , end = 1100000
+                , { start = 100000000000
+                  , end = 110000000000
                   , a = 44
                   , b = Nothing
                   }
-                , { start = 1100000
-                  , end = 2000000
+                , { start = 110000000000
+                  , end = 200000000000
                   , a = 2345
                   , b = Just 12
                   }
@@ -75,76 +75,33 @@ makeChart stack =
                     }
             , stack = stack
             }
-        --|> Chart.addDataSet
-        --    { readings =
-        --        [ { start = 0
-        --          , end = 1000000
-        --          , a = 123
-        --          , b = -2
-        --          }
-        --        , { start = 1000000
-        --          , end = 1200000
-        --          , a = 4
-        --          , b = -22
-        --          }
-        --        , { start = 1200000
-        --          , end = 2000000
-        --          , a = 234
-        --          , b = -1
-        --          }
-        --        ]
-        --    , seriesList =
-        --        [ { label = "Series B"
-        --          , accessor = .b >> Just
-        --          , fill = Paint Color.orange
-        --          , line = Paint Color.black
-        --          , gapFill = Paint Color.gray
-        --          }
-        --        , { label = "Series A"
-        --          , accessor = .a >> Just
-        --          , fill = Paint Color.red
-        --          , line = Paint Color.black
-        --          , gapFill = Paint Color.gray
-        --          }
-        --        ]
-        --    , readingType =
-        --        Chart.Accumulated
-        --            { startAccessor = .start
-        --            , endAccessor = .end
-        --            , layers =
-        --                { solid = True
-        --                , gaps = True
-        --                }
-        --            }
-        --    , stack = stack
-        --    }
         |> Chart.addDataSet
             { readings =
-                [ { time = 500
+                [ { time = 5000000000
                   , a = -123
                   , b = Just 100
                   }
-                , { time = 400000
+                , { time = 40000000000
                   , a = 4
                   , b = Just 2890
                   }
-                , { time = 800000
+                , { time = 80000000000
                   , a = 420
                   , b = Just 2000
                   }
-                , { time = 1200000
+                , { time = 120000000000
                   , a = 234
                   , b = Nothing
                   }
-                , { time = 1500000
+                , { time = 150000000000
                   , a = 534
                   , b = Just 100
                   }
-                , { time = 1750000
+                , { time = 175000000000
                   , a = 534
                   , b = Just 80
                   }
-                , { time = 2000000
+                , { time = 200000000000
                   , a = 734
                   , b = Just 900
                   }
@@ -177,21 +134,21 @@ makeChart stack =
             (Elements.yAxis
                 { placement = YAxis.Inside
                 , position = YAxis.Right
-                , tickFormatter = String.fromFloat
+                , tickFormatter = \chartConfig -> String.fromFloat
                 }
             )
         |> Chart.add
             (Elements.xAxis
-                { renderer = X.TimeSeries
-                , tickFormatter = String.fromFloat
+                { tickFormatter = always String.fromFloat
                 , paddingLeft = 40
                 , paddingBottom = 40
                 }
             )
         |> Chart.render
             { size = ( 1000, 400 )
-            , startTime = millisToPosix 0
-            , endTime = millisToPosix 3000000
+            , start =  0
+            , end =  200000000000
+            , timeZone = Time.utc
             }
 
 

@@ -1,5 +1,6 @@
 module Chart.Types exposing (..)
 
+import Scale exposing (ContinuousScale)
 import Svg exposing (Svg)
 
 
@@ -31,6 +32,8 @@ type alias ChartTick =
 type alias ChartConfig =
     { width : Float
     , height : Float
+    , xScale : ContinuousScale Float
+    , yScale : ContinuousScale Float
     , xScaleConvert : Float -> Float
     , yScaleConvert : Float -> Float
     , minYScaled : Float

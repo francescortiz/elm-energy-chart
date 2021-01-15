@@ -50,7 +50,7 @@ type Position
 type alias Options =
     { placement : Placement
     , position : Position
-    , tickFormatter : Float -> String
+    , tickFormatter : ChartConfig -> Float -> String
     }
 
 
@@ -88,6 +88,9 @@ contributeToMaxYTicks heightInPx =
 render : Options -> ChartConfig -> Svg msg
 render options chartConfig =
     let
+        tickFormatter =
+            options.tickFormatter chartConfig
+
         yTickRectPaddingRight =
             5
 
@@ -178,7 +181,7 @@ render options chartConfig =
                                     , y -10
                                     , dy 0
                                     ]
-                                    [ text (options.tickFormatter tickValue) ]
+                                    [ text (tickFormatter tickValue) ]
                                 ]
 
                           else

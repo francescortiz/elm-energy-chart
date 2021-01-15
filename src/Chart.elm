@@ -4,6 +4,7 @@ module Chart exposing
     , Element(..)
     , PointLayer(..)
     , ReadingType(..)
+    , Series
     , add
     , addDataSet
     , empty
@@ -18,8 +19,8 @@ import Path
 import Scale exposing (ContinuousScale)
 import Shape
 import SubPath exposing (SubPath)
-import Svg.Attributes as Attributes exposing (id)
-import Time exposing (Posix, posixToMillis)
+import Svg.Attributes as Attributes exposing (id, preserveAspectRatio)
+import Time exposing (Posix, millisToPosix, posixToMillis)
 import Tuple3
 import TypedSvg exposing (clipPath, defs, g, rect, svg)
 import TypedSvg.Attributes exposing (class, fill, stroke, transform, viewBox)
@@ -270,6 +271,7 @@ dataSetMapper dataSet =
     , seriesList =
         seriesList
             |> List.indexedMap seriesToInteral
+            |> List.reverse
     , readingType =
         case readingType of
             Accumulated { layers } ->
@@ -352,15 +354,16 @@ maxPaddings paddings =
 
 render :
     { size : ( Float, Float )
-    , startTime : Posix
-    , endTime : Posix
+    , start : Float
+    , end : Float
+    , timeZone : Time.Zone
     }
     -> Chart msg
     -> Html msg
-render options (Chart { elements }) =
+render { size, start, end, timeZone } (Chart { elements }) =
     let
         ( chartWidth, chartHeight ) =
-            options.size
+            size
 
         halfLineWidth =
             defaultLineWidth / 2
@@ -416,15 +419,6 @@ render options (Chart { elements }) =
                     )
                     ( 0, 0 )
 
-        minX =
-            posixToFloat options.startTime
-
-        maxX =
-            posixToFloat options.endTime
-
-        xScaleNoTics =
-            Scale.linear ( 0, chartWidth - padding.left - padding.right ) ( minX, maxX )
-
         yScaleNoTics =
             Scale.linear ( 0, canvasHeight ) ( dirtyMinY, dirtyMaxY )
 
@@ -455,23 +449,34 @@ render options (Chart { elements }) =
                     , []
                     , Scale.convert yScaleNoTics
                     )
-                        |> Debug.log "no ticks"
 
         ( xScale, xTicksScaled, xScaleConvert ) =
             case maxXTicks of
                 Just xTickCount ->
                     let
-                        xScale_ =
-                            xScaleNoTics
+                        timeScale =
+                            Scale.time timeZone ( 0, chartWidth - padding.left - padding.right ) ( millisToPosix (floor start), millisToPosix (floor end) )
                                 |> Scale.nice xTickCount
+
+                        -- We want to work with floats, not posix.
+                        xScale_ =
+                            Scale.linear
+                                (Scale.range timeScale)
+                                (Scale.domain timeScale
+                                    |> Tuple.mapBoth posixToFloat posixToFloat
+                                )
 
                         xScaleConvert_ =
                             Scale.convert xScale_
                     in
                     ( xScale_
-                    , Scale.ticks xScale_ xTickCount
+                    , Scale.ticks timeScale xTickCount
                         |> List.map
-                            (\tickValue ->
+                            (\timeTickValue ->
+                                let
+                                    tickValue =
+                                        posixToFloat timeTickValue
+                                in
                                 { tickValue = tickValue
                                 , tickPosition = xScaleConvert_ tickValue
                                 }
@@ -480,30 +485,43 @@ render options (Chart { elements }) =
                     )
 
                 Nothing ->
-                    ( xScaleNoTics
+                    let
+                        -- We want to work with floats, not posix.
+                        xScale_ =
+                            Scale.linear ( 0, chartWidth - padding.left - padding.right ) ( start, end )
+
+                        xScaleConvert_ =
+                            Scale.convert xScale_
+                    in
+                    ( xScale_
                     , []
-                    , Scale.convert xScaleNoTics
+                    , xScaleConvert_
                     )
-                        |> Debug.log "no ticks"
 
         ( minY, maxY ) =
             Scale.domain yScale
 
         chartConfig : ChartConfig
         chartConfig =
-            { xScaleConvert = Scale.convert xScale
+            { width = chartWidth
+            , height = chartHeight
+            , xScale = xScale
+            , yScale = yScale
+            , xScaleConvert = Scale.convert xScale
             , yScaleConvert = yScaleConvert
             , minYScaled = yScaleConvert minY
             , maxYScaled = yScaleConvert maxY
             , xTicks = xTicksScaled
             , yTicks = yTicksScaled
-            , width = chartWidth
-            , height = chartHeight
             , padding = padding
             }
     in
     svg
-        [ viewBox 0 0 chartWidth chartHeight ]
+        [ viewBox 0 0 chartWidth chartHeight
+        , preserveAspectRatio "xMinYMin meet"
+        , width chartWidth
+        , height chartHeight
+        ]
         [ defs []
             [ clipPath [ id "plot-canvas-clip" ]
                 [ rect

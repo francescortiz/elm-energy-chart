@@ -13,7 +13,7 @@ module Chart exposing
     )
 
 import Chart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
-import Html exposing (Html, text)
+import Html exposing (Attribute, Html, text)
 import List.Extra
 import Path
 import Scale exposing (ContinuousScale)
@@ -357,10 +357,11 @@ render :
     , start : Float
     , end : Float
     , timeZone : Time.Zone
+    , attributes : List (Attribute msg)
     }
     -> Chart msg
     -> Html msg
-render { size, start, end, timeZone } (Chart { elements }) =
+render { size, start, end, timeZone, attributes } (Chart { elements }) =
     let
         ( chartWidth, chartHeight ) =
             size
@@ -517,11 +518,13 @@ render { size, start, end, timeZone } (Chart { elements }) =
             }
     in
     svg
-        [ viewBox 0 0 chartWidth chartHeight
-        , preserveAspectRatio "xMinYMin meet"
-        , width chartWidth
-        , height chartHeight
-        ]
+        ([ viewBox 0 0 chartWidth chartHeight
+         , preserveAspectRatio "xMinYMin meet"
+         , width chartWidth
+         , height chartHeight
+         ]
+            ++ attributes
+        )
         [ defs []
             [ clipPath [ id "plot-canvas-clip" ]
                 [ rect

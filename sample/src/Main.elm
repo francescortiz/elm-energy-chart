@@ -7,7 +7,7 @@ import Chart.Elements.XAxis as X
 import Chart.Elements.YAxis as YAxis
 import Color
 import Html exposing (Html, div, text)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (attribute, style)
 import Time exposing (millisToPosix)
 import TypedSvg.Types exposing (Paint(..))
 
@@ -149,6 +149,7 @@ makeChart stack =
             , start =  0
             , end =  200000000000
             , timeZone = Time.utc
+            , attributes =  [attribute "test-id" "test"]
             }
 
 

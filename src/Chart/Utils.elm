@@ -87,8 +87,8 @@ xAxisTickPreComputerFormatter startTime endTime =
 -- UNITS
 
 
-physicalTickFormatter : String -> ChartConfig -> (Float -> String)
-physicalTickFormatter units chartConfig =
+physicalTickFormatterHelper : (Float -> ( Float, Int, String )) -> String -> ChartConfig -> (Float -> String)
+physicalTickFormatterHelper formatter units chartConfig =
     let
         preComputation =
             chartConfig.yTicks
@@ -99,7 +99,7 @@ physicalTickFormatter units chartConfig =
                 |> List.minimum
                 |> Maybe.map
                     (\minimumValue ->
-                        internationalSystemTickPreComputerFormatter minimumValue
+                        formatter minimumValue
                     )
                 |> Maybe.withDefault ( 0, 0, "" )
 
@@ -110,37 +110,67 @@ physicalTickFormatter units chartConfig =
         Round.round decimals (value / divider) ++ " " ++ magnitudeStr ++ units
 
 
-internationalSystemTickPreComputerFormatter : Float -> ( Float, Int, String )
-internationalSystemTickPreComputerFormatter minimumValue =
+physicalTickFormatter : String -> ChartConfig -> (Float -> String)
+physicalTickFormatter =
+    physicalTickFormatterHelper internationalSystemTickPreComputerFormatter
+
+
+physicalTickFormatterForVolume : String -> ChartConfig -> (Float -> String)
+physicalTickFormatterForVolume =
+    physicalTickFormatterHelper internationalSystemTickPreComputerFormatterForVolume
+
+
+internationalSystemTickPreComputerFormatterHelper : { e3 : String, e6 : String, e9 : String, e12 : String } -> Float -> ( Float, Int, String )
+internationalSystemTickPreComputerFormatterHelper { e3, e6, e9, e12 } minimumValue =
     if minimumValue >= 0 && minimumValue < 200 then
         ( 1, 0, "" )
 
     else if minimumValue >= 200 && minimumValue < 2000 then
-        ( 1000, 2, "k" )
+        ( 1000, 2, e3 )
 
     else if minimumValue >= 2000 && minimumValue < 20000 then
-        ( 1000, 1, "k" )
+        ( 1000, 1, e3 )
 
     else if minimumValue >= 20000 && minimumValue < 200000 then
-        ( 1000, 0, "k" )
+        ( 1000, 0, e3 )
 
     else if minimumValue >= 200000 && minimumValue < 2000000 then
-        ( 1000000, 2, "M" )
+        ( 1000000, 2, e6 )
 
     else if minimumValue >= 2000000 && minimumValue < 20000000 then
-        ( 1000000, 1, "M" )
+        ( 1000000, 1, e6 )
 
     else if minimumValue >= 20000000 && minimumValue < 200000000 then
-        ( 1000000, 0, "M" )
+        ( 1000000, 0, e6 )
 
     else if minimumValue >= 200000000 && minimumValue < 2000000000 then
-        ( 1000000000, 2, "G" )
+        ( 1000000000, 2, e9 )
 
     else if minimumValue >= 2000000000 && minimumValue < 20000000000 then
-        ( 1000000000, 1, "G" )
+        ( 1000000000, 1, e9 )
 
     else if minimumValue >= 20000000000 && minimumValue < 200000000000 then
-        ( 1000000000, 0, "G" )
+        ( 1000000000, 0, e9 )
 
     else
-        ( 1000000000000, 2, "T" )
+        ( 1000000000000, 2, e12 )
+
+
+internationalSystemTickPreComputerFormatter : Float -> ( Float, Int, String )
+internationalSystemTickPreComputerFormatter =
+    internationalSystemTickPreComputerFormatterHelper
+        { e3 = "k"
+        , e6 = "M"
+        , e9 = "G"
+        , e12 = "T"
+        }
+
+
+internationalSystemTickPreComputerFormatterForVolume : Float -> ( Float, Int, String )
+internationalSystemTickPreComputerFormatterForVolume =
+    internationalSystemTickPreComputerFormatterHelper
+        { e3 = "da"
+        , e6 = "h"
+        , e9 = "k"
+        , e12 = "dak"
+        }

@@ -148,6 +148,71 @@ makeChart stack =
             { size = ( 1000, 400 )
             , start =  0
             , end =  200000000000
+            , yForZero = 1000
+            , timeZone = Time.utc
+            , attributes =  [attribute "test-id" "test"]
+            }
+
+makeZeroesChart :  Html Msg
+makeZeroesChart  =
+    Chart.empty
+        |> Chart.addDataSet
+            { readings =
+                [ { start = 0
+                  , end = 100000000000
+                  , a = 0
+                  , b = Just 0
+                  }
+                , { start = 100000000000
+                  , end = 110000000000
+                  , a = 0
+                  , b = Nothing
+                  }
+                ]
+            , seriesList =
+                [ { label = "Series A"
+                  , accessor = .a >> Just
+                  , fill = Paint Color.green
+                  , line = Paint Color.black
+                  , gapFill = Paint Color.gray
+                  }
+                , { label = "Series B"
+                  , accessor = .b
+                  , fill = Paint Color.blue
+                  , line = Paint Color.black
+                  , gapFill = Paint Color.gray
+                  }
+                ]
+            , readingType =
+                Chart.Accumulated
+                    { startAccessor = .start
+                    , endAccessor = .end
+                    , layers =
+                        { solid = True
+                        , gaps = False
+                        }
+                    }
+            , stack = False
+            }
+        |> Chart.add
+            (Elements.yAxis
+                { placement = YAxis.Inside
+                , position = YAxis.Right
+                , tickFormatter = \chartConfig -> String.fromFloat
+                }
+            )
+        |> Chart.add
+            (Elements.xAxis
+                { tickFormatter = always String.fromFloat
+                , paddingLeft = 40
+                , paddingBottom = 40
+                }
+            )
+        |> Chart.render
+            { size = ( 1000, 400 )
+            , start =  0
+            , end =  200000000000
+            , yForZero = 1000
             , timeZone = Time.utc
             , attributes =  [attribute "test-id" "test"]
             }
@@ -173,6 +238,7 @@ view model =
         , div [ style "width" "1000px", style "margin" "auto", style "margin" "auto" ]
             [ div [] [ makeChart False ]
             , div [] [ makeChart True ]
+            , div [] [ makeZeroesChart ]
             ]
         ]
 

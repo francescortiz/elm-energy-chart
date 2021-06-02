@@ -356,12 +356,13 @@ render :
     { size : ( Float, Float )
     , start : Float
     , end : Float
+    , yForZero : Float
     , timeZone : Time.Zone
     , attributes : List (Attribute msg)
     }
     -> Chart msg
     -> Html msg
-render { size, start, end, timeZone, attributes } (Chart { elements }) =
+render { size, start, end, yForZero, timeZone, attributes } (Chart { elements }) =
     let
         ( chartWidth, chartHeight ) =
             size
@@ -393,7 +394,7 @@ render { size, start, end, timeZone, attributes } (Chart { elements }) =
                 |> List.filterMap isDataSetElement
 
         -- for the stroke
-        ( dirtyMinY, dirtyMaxY ) =
+        ( dirtyMinY, dirtyMaxY_ ) =
             dataSetElements
                 |> List.foldl
                     (\{ readingsList } ( dataSetMinY, dataSetMaxY ) ->
@@ -419,6 +420,13 @@ render { size, start, end, timeZone, attributes } (Chart { elements }) =
                                 ( dataSetMinY, dataSetMaxY )
                     )
                     ( 0, 0 )
+
+        dirtyMaxY =
+            if dirtyMinY == dirtyMaxY_ then
+                dirtyMinY + yForZero
+
+            else
+                dirtyMaxY_
 
         yScaleNoTics =
             Scale.linear ( 0, canvasHeight ) ( dirtyMinY, dirtyMaxY )

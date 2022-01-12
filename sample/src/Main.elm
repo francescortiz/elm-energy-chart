@@ -1,10 +1,10 @@
 module Main exposing (..)
 
 import Browser
-import Chart exposing (AccumulatedLayers, Element(..), PointLayer(..))
-import Chart.Elements as Elements
-import Chart.Elements.XAxis as X
-import Chart.Elements.YAxis as YAxis
+import EChart exposing (AccumulatedLayers, Element(..), PointLayer(..))
+import EChart.Elements as Elements
+import EChart.Elements.XAxis as X
+import EChart.Elements.YAxis as YAxis
 import Color
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (attribute, style)
@@ -31,8 +31,8 @@ init flags =
 
 makeChart : Bool -> Html Msg
 makeChart stack =
-    Chart.empty
-        |> Chart.addDataSet
+    EChart.empty
+        |> EChart.addDataSet
             { readings =
                 [ { start = 0
                   , end = 100000000000
@@ -65,7 +65,7 @@ makeChart stack =
                   }
                 ]
             , readingType =
-                Chart.Accumulated
+                EChart.Accumulated
                     { startAccessor = .start
                     , endAccessor = .end
                     , layers =
@@ -75,7 +75,7 @@ makeChart stack =
                     }
             , stack = stack
             }
-        |> Chart.addDataSet
+        |> EChart.addDataSet
             { readings =
                 [ { time = 5000000000
                   , a = -123
@@ -121,7 +121,7 @@ makeChart stack =
                   }
                 ]
             , readingType =
-                Chart.Point
+                EChart.Point
                     { xAccessor = .time
                     , layers =
                         [ LineLayer
@@ -130,21 +130,21 @@ makeChart stack =
                     }
             , stack = stack
             }
-        |> Chart.add
+        |> EChart.add
             (Elements.yAxis
                 { placement = YAxis.Inside
                 , position = YAxis.Right
                 , tickFormatter = \chartConfig -> String.fromFloat
                 }
             )
-        |> Chart.add
+        |> EChart.add
             (Elements.xAxis
                 { tickFormatter = always String.fromFloat
                 , paddingLeft = 40
                 , paddingBottom = 40
                 }
             )
-        |> Chart.render
+        |> EChart.render
             { size = ( 1000, 400 )
             , start =  0
             , end =  200000000000
@@ -155,8 +155,8 @@ makeChart stack =
 
 makeZeroesChart :  Html Msg
 makeZeroesChart  =
-    Chart.empty
-        |> Chart.addDataSet
+    EChart.empty
+        |> EChart.addDataSet
             { readings =
                 [ { start = 0
                   , end = 100000000000
@@ -184,7 +184,7 @@ makeZeroesChart  =
                   }
                 ]
             , readingType =
-                Chart.Accumulated
+                EChart.Accumulated
                     { startAccessor = .start
                     , endAccessor = .end
                     , layers =
@@ -194,21 +194,21 @@ makeZeroesChart  =
                     }
             , stack = False
             }
-        |> Chart.add
+        |> EChart.add
             (Elements.yAxis
                 { placement = YAxis.Inside
                 , position = YAxis.Right
                 , tickFormatter = \chartConfig -> String.fromFloat
                 }
             )
-        |> Chart.add
+        |> EChart.add
             (Elements.xAxis
                 { tickFormatter = always String.fromFloat
                 , paddingLeft = 40
                 , paddingBottom = 40
                 }
             )
-        |> Chart.render
+        |> EChart.render
             { size = ( 1000, 400 )
             , start =  0
             , end =  200000000000

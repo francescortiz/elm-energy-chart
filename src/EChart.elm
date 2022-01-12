@@ -1,4 +1,4 @@
-module Chart exposing
+module EChart exposing
     ( AccumulatedLayers
     , DataSet
     , Element(..)
@@ -12,7 +12,7 @@ module Chart exposing
     , render
     )
 
-import Chart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
+import EChart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
 import Html exposing (Attribute, Html, text)
 import List.Extra
 import Path

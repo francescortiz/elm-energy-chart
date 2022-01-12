@@ -1,8 +1,8 @@
-module Chart.Elements exposing (..)
+module EChart.Elements exposing (..)
 
-import Chart.Elements.XAxis as XAxis
-import Chart.Elements.YAxis as YAxis
-import Chart.Types exposing (ElementDefinition)
+import EChart.Elements.XAxis as XAxis
+import EChart.Elements.YAxis as YAxis
+import EChart.Types exposing (ElementDefinition)
 
 
 xAxis : XAxis.Options -> ElementDefinition msg

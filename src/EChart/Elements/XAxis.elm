@@ -1,6 +1,6 @@
-module Chart.Elements.XAxis exposing (..)
+module EChart.Elements.XAxis exposing (..)
 
-import Chart.Types exposing (ChartConfig, ElementDefinition, Padding)
+import EChart.Types exposing (ChartConfig, ElementDefinition, Padding)
 import Svg.Attributes as RawSvg exposing (fill, stroke)
 import TypedSvg exposing (g, line, text_)
 import TypedSvg.Attributes exposing (class, fontWeight, textAnchor, transform)

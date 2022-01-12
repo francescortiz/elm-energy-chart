@@ -1,6 +1,6 @@
-module Chart.Elements.YAxis exposing (..)
+module EChart.Elements.YAxis exposing (..)
 
-import Chart.Types exposing (ChartConfig, ElementDefinition, Padding)
+import EChart.Types exposing (ChartConfig, ElementDefinition, Padding)
 import Svg.Attributes exposing (fill, stroke)
 import TypedSvg exposing (g, line, rect, text_)
 import TypedSvg.Attributes exposing (class, fontWeight, strokeDasharray, textAnchor, transform)

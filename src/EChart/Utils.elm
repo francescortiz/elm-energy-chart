@@ -1,7 +1,7 @@
-module Chart.Utils exposing (..)
+module EChart.Utils exposing (..)
 
-import Chart.Types exposing (ChartConfig)
 import DateFormat
+import EChart.Types exposing (ChartConfig)
 import Round
 import Scale
 import Time exposing (millisToPosix)

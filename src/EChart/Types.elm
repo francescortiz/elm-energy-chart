@@ -1,4 +1,4 @@
-module Chart.Types exposing (..)
+module EChart.Types exposing (..)
 
 import Scale exposing (ContinuousScale)
 import Svg exposing (Svg)

@@ -19,14 +19,14 @@ import Path
 import Scale exposing (ContinuousScale)
 import Shape
 import SubPath exposing (SubPath)
-import Svg.Attributes as Attributes exposing (id, preserveAspectRatio)
+import Svg.Attributes as Attributes exposing (fill, id, preserveAspectRatio, stroke)
 import Time exposing (Posix, millisToPosix, posixToMillis)
 import Tuple3
 import TypedSvg exposing (clipPath, defs, g, rect, svg)
-import TypedSvg.Attributes exposing (class, fill, stroke, transform, viewBox)
+import TypedSvg.Attributes exposing (class, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (height, strokeWidth, width, x, y)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types as TypeSvgAttribute exposing (Paint(..), Transform(..))
+import TypedSvg.Types as TypeSvgAttribute exposing (Transform(..))
 
 
 
@@ -45,18 +45,18 @@ defaultLineWidth =
 type alias Series reading =
     { label : String
     , accessor : reading -> Maybe Float
-    , fill : Paint
-    , line : Paint
-    , gapFill : Paint
+    , fill : String
+    , line : String
+    , gapFill : String
     }
 
 
 type alias InternalSeries =
     { index : Int
     , label : String
-    , fill : Paint
-    , line : Paint
-    , gapFill : Paint
+    , fill : String
+    , line : String
+    , gapFill : String
     }
 
 
@@ -683,7 +683,7 @@ renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingV
                 text ""
 
 
-renderSeriesRect : Int -> Paint -> Float -> Float -> Float -> Float -> Html msg
+renderSeriesRect : Int -> String -> Float -> Float -> Float -> Float -> Html msg
 renderSeriesRect index fillPaint x0 x1 y0 y1 =
     rect
         [ class [ "series-" ++ String.fromInt index ]
@@ -719,8 +719,8 @@ renderPointSeries layers chartConfig internalSeries readings =
 renderPointLayer :
     (List ( Float, Float ) -> SubPath)
     -> Float
-    -> Paint
-    -> Paint
+    -> String
+    -> String
     -> List InternalDatum
     -> PointLayer
     -> Svg msg
@@ -736,7 +736,7 @@ renderPointLayer shape lineWidth linePaint fillPaint readings layer =
 pointLayerLine :
     (List ( Float, Float ) -> SubPath)
     -> Float
-    -> Paint
+    -> String
     -> List InternalDatum
     -> Svg msg
 pointLayerLine shape lineWidth linePaint readings =
@@ -756,7 +756,7 @@ pointLayerLine shape lineWidth linePaint readings =
                 Path.element path
                     [ stroke linePaint
                     , strokeWidth lineWidth
-                    , fill PaintNone
+                    , fill "none"
                     ]
            )
 
@@ -764,7 +764,7 @@ pointLayerLine shape lineWidth linePaint readings =
 pointLayerFill :
     (List ( Float, Float ) -> SubPath)
     -> Float
-    -> Paint
+    -> String
     -> List InternalDatum
     -> Svg msg
 pointLayerFill shape lineWidth fillPaint readings =

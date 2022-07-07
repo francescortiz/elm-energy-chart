@@ -18,6 +18,7 @@ import List.Extra
 import Path
 import Scale exposing (ContinuousScale)
 import Shape
+import SpringDesign.Utils exposing (floatToPosix)
 import SubPath exposing (SubPath)
 import Svg.Attributes as Attributes exposing (fill, id, preserveAspectRatio, stroke)
 import Time exposing (Posix, millisToPosix, posixToMillis)
@@ -76,6 +77,7 @@ type ReadingType reading
         { startAccessor : reading -> Float
         , endAccessor : reading -> Float
         , layers : AccumulatedLayers
+        , barPadding : Float
         }
     | Point
         { xAccessor : reading -> Float
@@ -274,11 +276,12 @@ dataSetMapper dataSet =
             |> List.reverse
     , readingType =
         case readingType of
-            Accumulated { layers } ->
+            Accumulated { layers, barPadding } ->
                 Accumulated
                     { startAccessor = Tuple.first >> Tuple.first
                     , endAccessor = Tuple.first >> Tuple.second
                     , layers = layers
+                    , barPadding = barPadding
                     }
 
             Point { layers } ->
@@ -465,7 +468,6 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
                     let
                         timeScale =
                             Scale.time timeZone ( 0, chartWidth - padding.left - padding.right ) ( millisToPosix (floor start), millisToPosix (floor end) )
-                                |> Scale.nice xTickCount
 
                         -- We want to work with floats, not posix.
                         xScale_ =
@@ -593,7 +595,7 @@ renderDataSetSeries chartConfig readingType stack internalSeries readings =
         dataSetRenderer : List (Svg msg)
         dataSetRenderer =
             case readingType of
-                Accumulated { startAccessor, endAccessor, layers } ->
+                Accumulated { startAccessor, endAccessor, layers, barPadding } ->
                     let
                         startAccessorScale =
                             startAccessor >> xScaleConvert
@@ -616,7 +618,7 @@ renderDataSetSeries chartConfig readingType stack internalSeries readings =
                                     )
                     in
                     readingsMapped
-                        |> List.map (renderAccumulatedSeries layers chartConfig internalSeries)
+                        |> List.map (renderAccumulatedSeries layers chartConfig internalSeries barPadding)
 
                 Point { xAccessor, layers } ->
                     let
@@ -652,9 +654,10 @@ renderAccumulatedSeries :
     AccumulatedLayers
     -> ChartConfig
     -> InternalSeries
+    -> Float
     -> InternalDatum
     -> Svg msg
-renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingValue ) =
+renderAccumulatedSeries layers chartConfig internalSeries barPadding ( ( x0, x1 ), readingValue ) =
     case readingValue of
         Just ( y0__, y1__, _ ) ->
             let
@@ -666,7 +669,7 @@ renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingV
                         ( y0__, y1__ )
             in
             if layers.solid then
-                renderSeriesRect internalSeries.index internalSeries.fill x0 x1 y0 y1
+                renderSeriesRect internalSeries.index internalSeries.fill (x0 + barPadding) (x1 - barPadding) y0 y1
 
             else
                 text ""

@@ -479,14 +479,44 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
 
                         xScaleConvert_ =
                             Scale.convert xScale_
+
+                        xTicks_ =
+                            Scale.ticks timeScale xTickCount
+
+                        xTickDisplacement =
+                            case xTicks_ of
+                                tick :: _ ->
+                                    start
+                                        - posixToFloat tick
+
+                                [] ->
+                                    0
+
+                        xTickDistance =
+                            case xTicks_ of
+                                tick0 :: tick1 :: _ ->
+                                    posixToFloat tick1
+                                        - posixToFloat tick0
+
+                                _ ->
+                                    0
+
+                        xTicks =
+                            if xTickDisplacement < 0 then
+                                xTicks_
+                                --xTicks_
+                                --|> List.map (\x -> floatToPosix (posixToFloat x - xTickDistance))
+
+                            else
+                                xTicks_
                     in
                     ( xScale_
-                    , Scale.ticks timeScale xTickCount
+                    , xTicks
                         |> List.map
                             (\timeTickValue ->
                                 let
                                     tickValue =
-                                        posixToFloat timeTickValue
+                                        posixToFloat timeTickValue - xTickDisplacement
                                 in
                                 { tickValue = tickValue
                                 , tickPosition = xScaleConvert_ tickValue

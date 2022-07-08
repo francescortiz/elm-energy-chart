@@ -18,7 +18,6 @@ import List.Extra
 import Path
 import Scale exposing (ContinuousScale)
 import Shape
-import SpringDesign.Utils exposing (floatToPosix)
 import SubPath exposing (SubPath)
 import Svg.Attributes as Attributes exposing (fill, id, preserveAspectRatio, stroke)
 import Time exposing (Posix, millisToPosix, posixToMillis)

@@ -543,12 +543,21 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
 
         chartConfig : ChartConfig
         chartConfig =
-            { width = chartWidth
+            { -- Physical properties
+              contentMinX = padding.left
+            , contentMinY = padding.top
+            , contentWidth = chartWidth - padding.left - padding.right
+            , contentHeight = chartHeight - padding.top - padding.bottom
+            , width = chartWidth
             , height = chartHeight
+
+            -- Content properties
             , xScale = xScale
             , yScale = yScale
             , xScaleConvert = Scale.convert xScale
             , yScaleConvert = yScaleConvert
+            , xScaleInvert = Scale.invert xScale
+            , yScaleInvert = Scale.invert yScale
             , minYScaled = yScaleConvert minY
             , maxYScaled = yScaleConvert maxY
             , xTicks = xTicksScaled

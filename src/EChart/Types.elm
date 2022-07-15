@@ -30,17 +30,26 @@ type alias ChartTick =
 
 
 type alias ChartConfig =
-    { width : Float
+    { -- Canvas properties
+      width : Float
     , height : Float
+    , padding : Padding
+    , contentMinX : Float
+    , contentMinY : Float
+    , contentWidth : Float
+    , contentHeight : Float
+
+    -- Domain properties
     , xScale : ContinuousScale Float
     , yScale : ContinuousScale Float
     , xScaleConvert : Float -> Float
     , yScaleConvert : Float -> Float
+    , xScaleInvert : Float -> Float
+    , yScaleInvert : Float -> Float
     , minYScaled : Float
     , maxYScaled : Float
     , xTicks : List ChartTick
     , yTicks : List ChartTick
-    , padding : Padding
     }
 
 

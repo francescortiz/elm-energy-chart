@@ -20,7 +20,7 @@ size =
 
 yTickRequestHeight : Float
 yTickRequestHeight =
-    40
+    80
 
 
 requestedPaddingTop : Float

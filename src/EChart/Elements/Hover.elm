@@ -38,11 +38,6 @@ contributeToPadding _ =
     Padding 0 0 0 0
 
 
-contributeToMaxYTicks : Float -> Maybe Int
-contributeToMaxYTicks _ =
-    Nothing
-
-
 
 -- RENDER
 
@@ -93,6 +88,6 @@ createElement : Options msg -> ElementDefinition msg
 createElement options =
     { contributeToPadding = contributeToPadding options
     , contributeToMaxXTicks = always Nothing
-    , contributeToMaxYTicks = contributeToMaxYTicks
+    , contributeToMaxYTicks = always Nothing
     , render = render options
     }

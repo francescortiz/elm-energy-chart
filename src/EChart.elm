@@ -10,6 +10,7 @@ module EChart exposing
     , empty
     , posixToFloat
     , render
+    , renderWithMetaData
     )
 
 import EChart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
@@ -364,7 +365,22 @@ render :
     }
     -> Chart msg
     -> Html msg
-render { size, start, end, yForZero, timeZone, attributes } (Chart { elements }) =
+render flags chart =
+    renderWithMetaData flags chart
+        |> Tuple.second
+
+
+renderWithMetaData :
+    { size : ( Float, Float )
+    , start : Float
+    , end : Float
+    , yForZero : Float
+    , timeZone : Time.Zone
+    , attributes : List (Attribute msg)
+    }
+    -> Chart msg
+    -> ( ChartConfig, Html msg )
+renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart { elements }) =
     let
         ( chartWidth, chartHeight ) =
             size
@@ -565,7 +581,8 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
             , padding = padding
             }
     in
-    svg
+    ( chartConfig
+    , svg
         ([ viewBox 0 0 chartWidth chartHeight
          , preserveAspectRatio "xMinYMin meet"
          , width chartWidth
@@ -592,6 +609,7 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
                 |> List.map (renderElement chartConfig)
             )
         ]
+    )
 
 
 renderElement : ChartConfig -> Element msg -> Svg msg

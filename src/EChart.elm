@@ -10,6 +10,7 @@ module EChart exposing
     , empty
     , posixToFloat
     , render
+    , renderWithMetaData
     )
 
 import EChart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
@@ -76,6 +77,7 @@ type ReadingType reading
         { startAccessor : reading -> Float
         , endAccessor : reading -> Float
         , layers : AccumulatedLayers
+        , barPadding : Float
         }
     | Point
         { xAccessor : reading -> Float
@@ -274,11 +276,12 @@ dataSetMapper dataSet =
             |> List.reverse
     , readingType =
         case readingType of
-            Accumulated { layers } ->
+            Accumulated { layers, barPadding } ->
                 Accumulated
                     { startAccessor = Tuple.first >> Tuple.first
                     , endAccessor = Tuple.first >> Tuple.second
                     , layers = layers
+                    , barPadding = barPadding
                     }
 
             Point { layers } ->
@@ -362,7 +365,22 @@ render :
     }
     -> Chart msg
     -> Html msg
-render { size, start, end, yForZero, timeZone, attributes } (Chart { elements }) =
+render flags chart =
+    renderWithMetaData flags chart
+        |> Tuple.second
+
+
+renderWithMetaData :
+    { size : ( Float, Float )
+    , start : Float
+    , end : Float
+    , yForZero : Float
+    , timeZone : Time.Zone
+    , attributes : List (Attribute msg)
+    }
+    -> Chart msg
+    -> ( ChartConfig, Html msg )
+renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart { elements }) =
     let
         ( chartWidth, chartHeight ) =
             size
@@ -465,7 +483,6 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
                     let
                         timeScale =
                             Scale.time timeZone ( 0, chartWidth - padding.left - padding.right ) ( millisToPosix (floor start), millisToPosix (floor end) )
-                                |> Scale.nice xTickCount
 
                         -- We want to work with floats, not posix.
                         xScale_ =
@@ -477,14 +494,44 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
 
                         xScaleConvert_ =
                             Scale.convert xScale_
+
+                        xTicks_ =
+                            Scale.ticks timeScale xTickCount
+
+                        xTickDisplacement =
+                            case xTicks_ of
+                                tick :: _ ->
+                                    start
+                                        - posixToFloat tick
+
+                                [] ->
+                                    0
+
+                        xTickDistance =
+                            case xTicks_ of
+                                tick0 :: tick1 :: _ ->
+                                    posixToFloat tick1
+                                        - posixToFloat tick0
+
+                                _ ->
+                                    0
+
+                        xTicks =
+                            if xTickDisplacement < 0 then
+                                xTicks_
+                                --xTicks_
+                                --|> List.map (\x -> floatToPosix (posixToFloat x - xTickDistance))
+
+                            else
+                                xTicks_
                     in
                     ( xScale_
-                    , Scale.ticks timeScale xTickCount
+                    , xTicks
                         |> List.map
                             (\timeTickValue ->
                                 let
                                     tickValue =
-                                        posixToFloat timeTickValue
+                                        posixToFloat timeTickValue - xTickDisplacement
                                 in
                                 { tickValue = tickValue
                                 , tickPosition = xScaleConvert_ tickValue
@@ -512,12 +559,21 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
 
         chartConfig : ChartConfig
         chartConfig =
-            { width = chartWidth
+            { -- Physical properties
+              contentMinX = padding.left
+            , contentMinY = padding.top
+            , contentWidth = chartWidth - padding.left - padding.right
+            , contentHeight = chartHeight - padding.top - padding.bottom
+            , width = chartWidth
             , height = chartHeight
+
+            -- Content properties
             , xScale = xScale
             , yScale = yScale
             , xScaleConvert = Scale.convert xScale
             , yScaleConvert = yScaleConvert
+            , xScaleInvert = Scale.invert xScale
+            , yScaleInvert = Scale.invert yScale
             , minYScaled = yScaleConvert minY
             , maxYScaled = yScaleConvert maxY
             , xTicks = xTicksScaled
@@ -525,7 +581,8 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
             , padding = padding
             }
     in
-    svg
+    ( chartConfig
+    , svg
         ([ viewBox 0 0 chartWidth chartHeight
          , preserveAspectRatio "xMinYMin meet"
          , width chartWidth
@@ -552,6 +609,7 @@ render { size, start, end, yForZero, timeZone, attributes } (Chart { elements })
                 |> List.map (renderElement chartConfig)
             )
         ]
+    )
 
 
 renderElement : ChartConfig -> Element msg -> Svg msg
@@ -593,7 +651,7 @@ renderDataSetSeries chartConfig readingType stack internalSeries readings =
         dataSetRenderer : List (Svg msg)
         dataSetRenderer =
             case readingType of
-                Accumulated { startAccessor, endAccessor, layers } ->
+                Accumulated { startAccessor, endAccessor, layers, barPadding } ->
                     let
                         startAccessorScale =
                             startAccessor >> xScaleConvert
@@ -616,7 +674,7 @@ renderDataSetSeries chartConfig readingType stack internalSeries readings =
                                     )
                     in
                     readingsMapped
-                        |> List.map (renderAccumulatedSeries layers chartConfig internalSeries)
+                        |> List.map (renderAccumulatedSeries layers chartConfig internalSeries barPadding)
 
                 Point { xAccessor, layers } ->
                     let
@@ -652,9 +710,10 @@ renderAccumulatedSeries :
     AccumulatedLayers
     -> ChartConfig
     -> InternalSeries
+    -> Float
     -> InternalDatum
     -> Svg msg
-renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingValue ) =
+renderAccumulatedSeries layers chartConfig internalSeries barPadding ( ( x0, x1 ), readingValue ) =
     case readingValue of
         Just ( y0__, y1__, _ ) ->
             let
@@ -666,7 +725,7 @@ renderAccumulatedSeries layers chartConfig internalSeries ( ( x0, x1 ), readingV
                         ( y0__, y1__ )
             in
             if layers.solid then
-                renderSeriesRect internalSeries.index internalSeries.fill x0 x1 y0 y1
+                renderSeriesRect internalSeries.index internalSeries.fill (x0 + barPadding) (x1 - barPadding) y0 y1
 
             else
                 text ""

@@ -29,6 +29,13 @@ type alias ChartTick =
     { tickValue : Float, tickPosition : Float }
 
 
+type alias XAxisInfo =
+    { widthInPx : Float
+    , startTimeInMs : Int
+    , endTimeInMs : Int
+    }
+
+
 type alias ChartConfig =
     { -- Canvas properties
       width : Float
@@ -50,12 +57,44 @@ type alias ChartConfig =
     , maxYScaled : Float
     , xTicks : List ChartTick
     , yTicks : List ChartTick
+    , xTickInterval : TimeInterval
     }
 
 
 type alias ElementDefinition msg =
     { contributeToPadding : Padding
-    , contributeToMaxXTicks : Float -> Maybe Int
+    , contributeToXTicks : XAxisInfo -> Maybe ( Int, TimeInterval, Int )
     , contributeToMaxYTicks : Float -> Maybe Int
     , render : ChartConfig -> Svg msg
     }
+
+
+type TimeInterval
+    = Year
+    | Month
+    | Day
+    | Hour
+
+
+defaultTimeIntervals : List ( TimeInterval, Int )
+defaultTimeIntervals =
+    [ ( Hour, 1 )
+    , ( Hour, 3 )
+    , ( Hour, 6 )
+    , ( Hour, 8 )
+    , ( Hour, 12 )
+    , ( Day, 1 )
+    , ( Day, 2 )
+    , ( Day, 3 )
+    , ( Day, 4 )
+    , ( Day, 5 )
+    , ( Day, 6 )
+    , ( Day, 7 )
+    , ( Day, 14 )
+    , ( Month, 1 )
+    , ( Month, 2 )
+    , ( Month, 3 )
+    , ( Month, 4 )
+    , ( Month, 6 )
+    , ( Year, 1 )
+    ]

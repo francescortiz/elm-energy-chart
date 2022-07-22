@@ -1,6 +1,7 @@
 module EChart.Elements.XAxis exposing (..)
 
-import EChart.Types exposing (ChartConfig, ElementDefinition, Padding)
+import EChart.Types exposing (ChartConfig, ChartTick, ElementDefinition, Padding, TimeInterval(..), XAxisInfo, defaultTimeIntervals)
+import EChart.Utils exposing (getDurationFromTimeInterval)
 import Svg.Attributes as RawSvg exposing (fill, stroke)
 import TypedSvg exposing (g, line, text_)
 import TypedSvg.Attributes exposing (class, fontWeight, textAnchor, transform)
@@ -11,6 +12,11 @@ import TypedSvg.Types exposing (AnchorAlignment(..), FontWeight(..), Paint(..), 
 
 
 -- CONSTANTS
+
+
+allowedMaxXTicks : Int
+allowedMaxXTicks =
+    10
 
 
 xTickRequestWidth : Float
@@ -41,6 +47,7 @@ type alias Options =
     { tickFormatter : ChartConfig -> Float -> String
     , paddingLeft : Float
     , paddingBottom : Float
+    , intervals : Maybe (List ( TimeInterval, Int ))
     }
 
 
@@ -53,11 +60,62 @@ contributeToPadding options =
     Padding 0 rotatedTextExtraPaddingRight options.paddingBottom options.paddingLeft
 
 
-contributeToMaxXTicks : Float -> Maybe Int
-contributeToMaxXTicks widthInPx =
-    widthInPx
-        / xTickRequestWidth
-        |> floor
+contributeToXTicks : Options -> XAxisInfo -> Maybe ( Int, TimeInterval, Int )
+contributeToXTicks options { widthInPx, startTimeInMs, endTimeInMs } =
+    let
+        maxXTicksThatFit : Int
+        maxXTicksThatFit =
+            widthInPx
+                / xTickRequestWidth
+                |> floor
+
+        numXTicks : Int
+        numXTicks =
+            min maxXTicksThatFit allowedMaxXTicks
+
+        domainDuration : Int
+        domainDuration =
+            endTimeInMs - startTimeInMs
+
+        intervals : List ( TimeInterval, Int )
+        intervals =
+            case options.intervals of
+                Just intervals_ ->
+                    intervals_
+
+                Nothing ->
+                    defaultTimeIntervals
+
+        ( bestNumXTicks, bestXTicksTimeInterval, bestXTicksTimeIntervalRepeat ) =
+            intervals
+                |> List.foldl
+                    (\( xTicksTimeInterval, xTicksRepeatInterval ) ( bestNumXTicks_, bestXTicksTimeInterval_, bestXTicksTimeIntervalRepeat_ ) ->
+                        let
+                            currentTimeIntervalDuration : Int
+                            currentTimeIntervalDuration =
+                                getDurationFromTimeInterval xTicksTimeInterval
+
+                            currentIntervalNumRepeat : Int
+                            currentIntervalNumRepeat =
+                                xTicksRepeatInterval
+
+                            currentIntervalDuration : Int
+                            currentIntervalDuration =
+                                currentTimeIntervalDuration * currentIntervalNumRepeat
+
+                            currentNumTicks : Int
+                            currentNumTicks =
+                                1 + domainDuration // currentIntervalDuration
+                        in
+                        if abs (currentNumTicks - numXTicks) <= abs (bestNumXTicks_ - numXTicks) then
+                            ( currentNumTicks, xTicksTimeInterval, xTicksRepeatInterval )
+
+                        else
+                            ( bestNumXTicks_, bestXTicksTimeInterval_, bestXTicksTimeIntervalRepeat_ )
+                    )
+                    ( 0, Day, 1 )
+    in
+    ( bestNumXTicks, bestXTicksTimeInterval, bestXTicksTimeIntervalRepeat )
         |> Just
 
 
@@ -122,7 +180,7 @@ render options chartConfig =
 createElement : Options -> ElementDefinition msg
 createElement options =
     { contributeToPadding = contributeToPadding options
-    , contributeToMaxXTicks = contributeToMaxXTicks
+    , contributeToXTicks = contributeToXTicks options
     , contributeToMaxYTicks = always Nothing
     , render = render options
     }

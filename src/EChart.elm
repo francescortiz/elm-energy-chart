@@ -13,8 +13,10 @@ module EChart exposing
     , renderWithMetaData
     )
 
-import EChart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding)
+import EChart.Types exposing (ChartConfig, ChartTick, ElementDefinition, InternalDatum, Padding, TimeInterval(..))
+import EChart.Utils exposing (getDurationFromTimeInterval)
 import Html exposing (Attribute, Html, text)
+import List
 import List.Extra
 import Path
 import Scale exposing (ContinuousScale)
@@ -321,14 +323,14 @@ contributeElementToPadding element =
             contributeToPadding
 
 
-contributeElementToMaxXTicks : Float -> Element msg -> Maybe Int
-contributeElementToMaxXTicks heightInPx element =
+contributeElementToXTicks : Float -> Int -> Int -> Element msg -> Maybe ( Int, TimeInterval, Int )
+contributeElementToXTicks widthInPx startTimeInMs endTimeInMs element =
     case element of
         DataSetElement _ ->
             Nothing
 
-        Element { contributeToMaxXTicks } ->
-            contributeToMaxXTicks heightInPx
+        Element { contributeToXTicks } ->
+            contributeToXTicks { widthInPx = widthInPx, startTimeInMs = startTimeInMs, endTimeInMs = endTimeInMs }
 
 
 contributeElementToMaxYTicks : Float -> Element msg -> Maybe Int
@@ -397,10 +399,15 @@ renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart {
         canvasHeight =
             chartHeight - padding.top - padding.bottom
 
-        maxXTicks =
+        canvasWidth =
+            chartWidth - padding.left - padding.right
+
+        xTicksInfo : Maybe ( Int, TimeInterval, Int )
+        xTicksInfo =
             elements
-                |> List.filterMap (contributeElementToMaxXTicks canvasHeight)
-                |> List.minimum
+                |> List.reverse
+                |> List.filterMap (contributeElementToXTicks canvasWidth (floor start) (floor end))
+                |> List.head
 
         maxYTicks =
             elements
@@ -477,9 +484,9 @@ renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart {
                     , Scale.convert yScaleNoTics
                     )
 
-        ( xScale, xTicksScaled, xScaleConvert ) =
-            case maxXTicks of
-                Just xTickCount ->
+        { xScale, xTicksScaled, xScaleConvert, xTickInterval } =
+            case xTicksInfo of
+                Just ( numXTicks, xTickInterval_, xTickIntervalRepeat_ ) ->
                     let
                         timeScale =
                             Scale.time timeZone ( 0, chartWidth - padding.left - padding.right ) ( millisToPosix (floor start), millisToPosix (floor end) )
@@ -495,8 +502,19 @@ renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart {
                         xScaleConvert_ =
                             Scale.convert xScale_
 
+                        xTickTimeIntervalDuration : Int
+                        xTickTimeIntervalDuration =
+                            getDurationFromTimeInterval xTickInterval_ * xTickIntervalRepeat_
+
+                        xTicks_ : List Posix
                         xTicks_ =
-                            Scale.ticks timeScale xTickCount
+                            List.range 0 (numXTicks - 1)
+                                |> List.map
+                                    (\i ->
+                                        (start + toFloat (xTickTimeIntervalDuration * i))
+                                            |> floor
+                                            |> millisToPosix
+                                    )
 
                         xTickDisplacement =
                             case xTicks_ of
@@ -525,20 +543,22 @@ renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart {
                             else
                                 xTicks_
                     in
-                    ( xScale_
-                    , xTicks
-                        |> List.map
-                            (\timeTickValue ->
-                                let
-                                    tickValue =
-                                        posixToFloat timeTickValue - xTickDisplacement
-                                in
-                                { tickValue = tickValue
-                                , tickPosition = xScaleConvert_ tickValue
-                                }
-                            )
-                    , xScaleConvert_
-                    )
+                    { xScale = xScale_
+                    , xTicksScaled =
+                        xTicks
+                            |> List.map
+                                (\timeTickValue ->
+                                    let
+                                        tickValue =
+                                            posixToFloat timeTickValue - xTickDisplacement
+                                    in
+                                    { tickValue = tickValue
+                                    , tickPosition = xScaleConvert_ tickValue
+                                    }
+                                )
+                    , xScaleConvert = xScaleConvert_
+                    , xTickInterval = xTickInterval_
+                    }
 
                 Nothing ->
                     let
@@ -549,10 +569,11 @@ renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart {
                         xScaleConvert_ =
                             Scale.convert xScale_
                     in
-                    ( xScale_
-                    , []
-                    , xScaleConvert_
-                    )
+                    { xScale = xScale_
+                    , xTicksScaled = []
+                    , xScaleConvert = xScaleConvert_
+                    , xTickInterval = Day
+                    }
 
         ( minY, maxY ) =
             Scale.domain yScale
@@ -562,15 +583,15 @@ renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart {
             { -- Physical properties
               contentMinX = padding.left
             , contentMinY = padding.top
-            , contentWidth = chartWidth - padding.left - padding.right
-            , contentHeight = chartHeight - padding.top - padding.bottom
+            , contentWidth = canvasWidth
+            , contentHeight = canvasHeight
             , width = chartWidth
             , height = chartHeight
 
             -- Content properties
             , xScale = xScale
             , yScale = yScale
-            , xScaleConvert = Scale.convert xScale
+            , xScaleConvert = xScaleConvert
             , yScaleConvert = yScaleConvert
             , xScaleInvert = Scale.invert xScale
             , yScaleInvert = Scale.invert yScale
@@ -579,6 +600,7 @@ renderWithMetaData { size, start, end, yForZero, timeZone, attributes } (Chart {
             , xTicks = xTicksScaled
             , yTicks = yTicksScaled
             , padding = padding
+            , xTickInterval = xTickInterval
             }
     in
     ( chartConfig

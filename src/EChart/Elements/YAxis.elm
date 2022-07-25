@@ -208,7 +208,7 @@ render options chartConfig =
 createElement : Options -> ElementDefinition msg
 createElement options =
     { contributeToPadding = contributeToPadding options
-    , contributeToMaxXTicks = always Nothing
+    , contributeToXTicks = always Nothing
     , contributeToMaxYTicks = contributeToMaxYTicks
     , render = render options
     }

@@ -1,9 +1,8 @@
 module EChart.Utils exposing (..)
 
 import DateFormat
-import EChart.Types exposing (ChartConfig)
+import EChart.Types exposing (ChartConfig, TimeInterval(..))
 import Round
-import Scale
 import Time exposing (millisToPosix)
 
 
@@ -31,56 +30,69 @@ millis1Day =
     24 * millis1Hour
 
 
-millis4Days : Int
-millis4Days =
-    4 * millis1Day
+millis1Month : Int
+millis1Month =
+    31 * millis1Day
+
+
+millis1Year : Int
+millis1Year =
+    365 * millis1Day
 
 
 
 -- TIME
 
 
+getDurationFromTimeInterval : TimeInterval -> Int
+getDurationFromTimeInterval timeInterval =
+    case timeInterval of
+        Year ->
+            millis1Year
+
+        Month ->
+            millis1Month
+
+        Day ->
+            millis1Day
+
+        Hour ->
+            millis1Hour
+
+
 dateTimeTickFormatter : Time.Zone -> ChartConfig -> (Float -> String)
 dateTimeTickFormatter timeZone chartConfig =
     let
-        ( startMillis, endMillis ) =
-            Scale.domain chartConfig.xScale
-                |> Tuple.mapBoth round round
-
         preComputation =
-            xAxisTickPreComputerFormatter startMillis endMillis
+            xAxisTickPreComputerFormatter chartConfig.xTickInterval
     in
     \value ->
         DateFormat.format preComputation timeZone (millisToPosix (round value))
 
 
-xAxisTickPreComputerFormatter : Int -> Int -> List DateFormat.Token
-xAxisTickPreComputerFormatter startTime endTime =
-    let
-        timeSpan =
-            endTime - startTime
-    in
-    if timeSpan < millis1Day then
-        [ DateFormat.hourMilitaryNumber
-        , DateFormat.text ":"
-        , DateFormat.minuteFixed
-        ]
+xAxisTickPreComputerFormatter : TimeInterval -> List DateFormat.Token
+xAxisTickPreComputerFormatter xTickInterval =
+    case xTickInterval of
+        Year ->
+            [ DateFormat.yearNumber ]
 
-    else if timeSpan < millis4Days then
-        [ DateFormat.dayOfMonthNumber
-        , DateFormat.text " "
-        , DateFormat.monthNameAbbreviated
-        , DateFormat.text " "
-        , DateFormat.hourMilitaryNumber
-        , DateFormat.text ":"
-        , DateFormat.minuteFixed
-        ]
+        Month ->
+            [ DateFormat.monthNameAbbreviated ]
 
-    else
-        [ DateFormat.dayOfMonthNumber
-        , DateFormat.text " "
-        , DateFormat.monthNameAbbreviated
-        ]
+        Day ->
+            [ DateFormat.dayOfMonthNumber
+            , DateFormat.text " "
+            , DateFormat.monthNameAbbreviated
+            ]
+
+        Hour ->
+            [ DateFormat.dayOfMonthNumber
+            , DateFormat.text " "
+            , DateFormat.monthNameAbbreviated
+            , DateFormat.text " "
+            , DateFormat.hourMilitaryNumber
+            , DateFormat.text "h"
+            ]
 
 
 

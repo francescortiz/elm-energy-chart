@@ -15,8 +15,22 @@ import TypedSvg.Core exposing (Svg)
 
 
 type alias HoverPoint =
-    { domain : { x : Float, y : Float }
-    , canvas : { x : Float, y : Float }
+    { domain :
+        { x : Float
+        , y : Float
+        , minX : Float
+        , minY : Float
+        , width : Float
+        , height : Float
+        }
+    , canvas :
+        { x : Float
+        , y : Float
+        , minX : Float
+        , minY : Float
+        , width : Float
+        , height : Float
+        }
     }
 
 
@@ -67,10 +81,18 @@ render options chartConfig =
                     { canvas =
                         { x = canvasX
                         , y = canvasY
+                        , minX = chartConfig.contentMinX
+                        , minY = chartConfig.contentMinY
+                        , width = chartConfig.contentWidth
+                        , height = chartConfig.contentHeight
                         }
                     , domain =
                         { x = chartConfig.xScaleInvert (canvasX - padding.left)
                         , y = chartConfig.yScaleInvert (canvasY - padding.top)
+                        , minX = chartConfig.xScaleInvert (chartConfig.contentMinX - padding.left)
+                        , minY = chartConfig.yScaleInvert (chartConfig.contentMinY - padding.top)
+                        , width = chartConfig.xScaleInvert (chartConfig.contentWidth - padding.left)
+                        , height = chartConfig.yScaleInvert (chartConfig.contentHeight - padding.top)
                         }
                     }
                     |> options.onMouseMove
